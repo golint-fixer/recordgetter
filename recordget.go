@@ -104,7 +104,6 @@ func main() {
 	client := pbc.NewCardServiceClient(conn)
 
 	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
-	log.Printf("Read cards: %v", cardList)
 	if err != nil {
 		panic(err)
 	}
@@ -116,21 +115,17 @@ func main() {
 		}
 
 		if card.Hash == "discogs-process" {
-			log.Printf("Processing %v", card)
 
 			//delete the card
 			server, port := getIP("cardserver", *host, portVal)
 			dServer, dPort := getIP("discogssyncer", *host, portVal)
 
-			log.Printf("Scoring card %v", card)
 			releaseID, _ := strconv.Atoi(card.Text)
 			rating, _ := strconv.Atoi(card.ActionMetadata[0])
-			log.Printf("Scoring %v as %v", releaseID, rating)
 			if !*dryRun {
 				scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
 			}
 
-			log.Printf("Deleting %v", card.Hash)
 			if !*dryRun {
 				deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
@@ -138,7 +133,6 @@ func main() {
 		}
 
 		if card.Hash == "" {
-			log.Printf("OOPS %v", card)
 			//delete the card
 			server, port := getIP("cardserver", *host, portVal)
 			deleteCard(card.Hash, server, strconv.Itoa(port))
@@ -166,9 +160,7 @@ func main() {
 		cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
 		card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
 		cards.Cards = append(cards.Cards, &card)
-		log.Printf("Writing: %v", cards)
 		if !*dryRun {
-			log.Printf("Writing the card")
 			_, err = client.AddCards(context.Background(), &cards)
 			if err != nil {
 				log.Printf("Problem adding cards %v", err)
