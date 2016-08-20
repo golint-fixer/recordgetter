@@ -24,7 +24,7 @@ func getIP(servername string, ip string, port int) (string, int) {
 	return r.Ip, int(r.Port)
 }
 
-func getRelease(folderName string, host string, port string) *pbd.Release {
+func getRelease(folderName string, host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	defer conn.Close()
@@ -37,7 +37,12 @@ func getRelease(folderName string, host string, port string) *pbd.Release {
 		log.Fatalf("Problem getting releases %v", err)
 	}
 
-	return r.Releases[rand.Intn(len(r.Releases))]
+	retRel := r.Releases[rand.Intn(len(r.Releases))]
+	meta, err := client.GetMetadata(context.Background(), retRel)
+	if err != nil {
+		log.Fatalf("Problem getting metadata %v", err)
+	}
+	return retRel, meta
 }
 
 func getReleaseWithID(folderName string, host string, port string, id int) *pbd.Release {
@@ -83,8 +88,10 @@ func scoreCard(releaseID int, rating int, host string, port string) {
 	release := getReleaseWithID("ListeningPile", host, port, releaseID)
 	release.Rating = int32(rating)
 	// Update the rating and move to the listening box
-	log.Printf("UPDATING: %v", release)
-	client.UpdateRating(context.Background(), release)
+	if rating > 0 {
+		log.Printf("UPDATING: %v", release)
+		client.UpdateRating(context.Background(), release)
+	}
 	log.Printf("MOVING: %v to box", release)
 	client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
 }
@@ -141,7 +148,7 @@ func main() {
 
 	if !foundCard {
 		dServer, dPort := getIP("discogssyncer", *host, portVal)
-		rel := getRelease("ListeningPile", dServer, strconv.Itoa(dPort))
+		rel, meta := getRelease("ListeningPile", dServer, strconv.Itoa(dPort))
 
 		cards := pbc.CardList{}
 
@@ -159,6 +166,10 @@ func main() {
 
 		cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
 		card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
+		addTime := time.Unix(meta.DateAdded, 0)
+		if time.Now().Sub(addTime).Hours() > 24*30*3 {
+			card.Action = pbc.Card_DISMISS
+		}
 		cards.Cards = append(cards.Cards, &card)
 		if !*dryRun {
 			_, err = client.AddCards(context.Background(), &cards)
