@@ -128,9 +128,15 @@ func main() {
 			dServer, dPort := getIP("discogssyncer", *host, portVal)
 
 			releaseID, _ := strconv.Atoi(card.Text)
-			rating, _ := strconv.Atoi(card.ActionMetadata[0])
-			if !*dryRun {
-				scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
+			if card.ActionMetadata != nil {
+				rating, _ := strconv.Atoi(card.ActionMetadata[0])
+				if !*dryRun {
+					scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
+				}
+			} else {
+				if !*dryRun {
+					scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
+				}
 			}
 
 			if !*dryRun {
