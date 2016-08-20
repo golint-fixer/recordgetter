@@ -173,7 +173,7 @@ func main() {
 		cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
 		card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
 		addTime := time.Unix(meta.DateAdded, 0)
-		if time.Now().Sub(addTime).Hours() > 24*30*3 {
+		if time.Now().Sub(addTime).Hours() < 24*30*3 {
 			card.Action = pbc.Card_DISMISS
 		}
 		cards.Cards = append(cards.Cards, &card)
