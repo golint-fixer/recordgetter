@@ -59,7 +59,6 @@ func getReleaseWithID(folderName string, host string, port string, id int) *pbd.
 	}
 
 	for _, release := range r.Releases {
-		log.Printf("RELEASE = %v -> %v", release.InstanceId, release)
 		if int(release.Id) == id {
 			return release
 		}
@@ -89,10 +88,8 @@ func scoreCard(releaseID int, rating int, host string, port string) {
 	release.Rating = int32(rating)
 	// Update the rating and move to the listening box
 	if rating > 0 {
-		log.Printf("UPDATING: %v", release)
 		client.UpdateRating(context.Background(), release)
 	}
-	log.Printf("MOVING: %v to box", release)
 	client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
 }
 
