@@ -24,7 +24,7 @@ func getIP(servername string, ip string, port int) (string, int) {
 	return r.Ip, int(r.Port)
 }
 
-func getRelease(folderName string, host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
+func getReleaseFromPile(folderName string, host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	defer conn.Close()
@@ -32,6 +32,44 @@ func getRelease(folderName string, host string, port string) (*pbd.Release, *pb.
 	folderList := &pb.FolderList{}
 	folder := &pbd.Folder{Name: folderName}
 	folderList.Folders = append(folderList.Folders, folder)
+	r, err := client.GetReleasesInFolder(context.Background(), folderList)
+	if err != nil {
+		log.Fatalf("Problem getting releases %v", err)
+	}
+
+	if len(r.Releases) == 0 {
+		return nil, nil
+	}
+
+	retRel := r.Releases[rand.Intn(len(r.Releases))]
+	meta, err := client.GetMetadata(context.Background(), retRel)
+	if err != nil {
+		log.Fatalf("Problem getting metadata %v", err)
+	}
+	return retRel, meta
+}
+
+func getReleaseFromCollection(host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+	defer conn.Close()
+	client := pb.NewDiscogsServiceClient(conn)
+
+	folderList := &pb.FolderList{}
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "12s"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "10s"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "April Orchestra"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Death Waltz"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "IM"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Music Mosaic"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "MusiquePourLImage"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "NumeroLPs"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Outside"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Robbie Basho"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Timing"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "TVMusic"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Vinyl Boxsets"})
+
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
 		log.Fatalf("Problem getting releases %v", err)
@@ -157,33 +195,64 @@ func main() {
 
 	if !foundCard {
 		dServer, dPort := getIP("discogssyncer", *host, portVal)
-		rel, meta := getRelease("ListeningPile", dServer, strconv.Itoa(dPort))
-
+		rel, meta := getReleaseFromPile("ListeningPile", dServer, strconv.Itoa(dPort))
 		cards := pbc.CardList{}
 
 		imageURL := ""
 		backupURL := ""
-		for _, image := range rel.Images {
-			if image.Type == "primary" {
-				imageURL = image.Uri
-			}
-			backupURL = image.Uri
-		}
-		if imageURL == "" {
-			imageURL = backupURL
-		}
 
-		cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
-		card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
-		addTime := time.Unix(meta.DateAdded, 0)
-		if time.Now().Sub(addTime).Hours() < 24*30*3 {
+		if rel != nil {
+			for _, image := range rel.Images {
+				if image.Type == "primary" {
+					imageURL = image.Uri
+				}
+				backupURL = image.Uri
+			}
+			if imageURL == "" {
+				imageURL = backupURL
+			}
+
+			cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
+			card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
+			addTime := time.Unix(meta.DateAdded, 0)
+			if time.Now().Sub(addTime).Hours() < 24*30*3 {
+				card.Action = pbc.Card_DISMISS
+			}
+			cards.Cards = append(cards.Cards, &card)
+			if !*dryRun {
+				_, err = client.AddCards(context.Background(), &cards)
+				if err != nil {
+					log.Printf("Problem adding cards %v", err)
+				}
+			}
+		} else {
+			rel, err := getReleaseFromCollection(dServer, strconv.Itoa(dPort))
+			cards := pbc.CardList{}
+
+			imageURL := ""
+			backupURL := ""
+
+			if rel != nil {
+				for _, image := range rel.Images {
+					if image.Type == "primary" {
+						imageURL = image.Uri
+					}
+					backupURL = image.Uri
+				}
+				if imageURL == "" {
+					imageURL = backupURL
+				}
+			}
+			card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100}
 			card.Action = pbc.Card_DISMISS
-		}
-		cards.Cards = append(cards.Cards, &card)
-		if !*dryRun {
-			_, err = client.AddCards(context.Background(), &cards)
-			if err != nil {
-				log.Printf("Problem adding cards %v", err)
+			cards.Cards = append(cards.Cards, &card)
+			if !*dryRun {
+				_, err2 := client.AddCards(context.Background(), &cards)
+				if err2 != nil {
+					log.Printf("Problem adding cards %v", err)
+				}
+			} else {
+				log.Printf("Writing %v", cards)
 			}
 		}
 	}
