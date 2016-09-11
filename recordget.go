@@ -131,16 +131,9 @@ func scoreCard(releaseID int, rating int, host string, port string) {
 	client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
 }
 
-func main() {
-	var host = flag.String("host", "10.0.1.17", "Hostname of server.")
-	var port = flag.String("port", "50055", "Port number of server")
-	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
-
-	flag.Parse()
-	portVal, _ := strconv.Atoi(*port)
-
+func hasCurrentCard(host string, portVal int) bool {
 	//Get the latest card from the cardserver
-	cServer, cPort := getIP("cardserver", *host, portVal)
+	cServer, cPort := getIP("cardserver", host, portVal)
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
@@ -150,110 +143,114 @@ func main() {
 		panic(err)
 	}
 
-	foundCard := false
 	for _, card := range cardList.Cards {
 		if card.Hash == "discogs" {
-			foundCard = true
+			return true
 		}
+	}
+	return false
+}
 
+func addCards(cardList *pbc.CardList, host string, portVal int) {
+	cServer, cPort := getIP("cardserver", host, portVal)
+	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	client := pbc.NewCardServiceClient(conn)
+	client.AddCards(context.Background(), cardList)
+}
+
+func processCard(host string, portVal int, dryRun bool) {
+	//Get the latest card from the cardserver
+	cServer, cPort := getIP("cardserver", host, portVal)
+	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
+	defer conn.Close()
+	client := pbc.NewCardServiceClient(conn)
+
+	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, card := range cardList.Cards {
 		if card.Hash == "discogs-process" {
-
 			//delete the card
-			server, port := getIP("cardserver", *host, portVal)
-			dServer, dPort := getIP("discogssyncer", *host, portVal)
+			server, port := getIP("cardserver", host, portVal)
+			dServer, dPort := getIP("discogssyncer", host, portVal)
 
 			log.Printf("READ CARD %v", card)
 
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
-				if !*dryRun {
-
+				if !dryRun {
 					log.Printf("RATING CARD %v", card)
 					scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
 				}
 			} else {
-				if !*dryRun {
+				if !dryRun {
 					log.Printf("SCORING CARD %v", card)
 					scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
 				}
 			}
-
-			if !*dryRun {
+			if !dryRun {
 				log.Printf("DELETING CARD %v", card)
 				deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
 
 		}
+	}
+}
 
-		if card.Hash == "" {
-			//delete the card
-			server, port := getIP("cardserver", *host, portVal)
-			deleteCard(card.Hash, server, strconv.Itoa(port))
+func getCard(rel *pbd.Release) pbc.Card {
+	var imageURL string
+	var backupURL string
+	for _, image := range rel.Images {
+		if image.Type == "primary" {
+			imageURL = image.Uri
 		}
+		backupURL = image.Uri
+	}
+	if imageURL == "" {
+		imageURL = backupURL
 	}
 
-	if !foundCard {
-		dServer, dPort := getIP("discogssyncer", *host, portVal)
-		rel, meta := getReleaseFromPile("ListeningPile", dServer, strconv.Itoa(dPort))
-		cards := pbc.CardList{}
+	card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Priority: 100}
+	return card
+}
 
-		imageURL := ""
-		backupURL := ""
+func main() {
+	var host = flag.String("host", "10.0.1.17", "Hostname of server.")
+	var port = flag.Int("port", 50055, "Port number of server")
+	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
+
+	foundCard := hasCurrentCard(*host, *port)
+	processCard(*host, *port, *dryRun)
+	cards := pbc.CardList{}
+
+	if !foundCard {
+		dServer, dPort := getIP("discogssyncer", *host, *port)
+		rel, meta := getReleaseFromPile("ListeningPile", dServer, strconv.Itoa(dPort))
 
 		if rel != nil {
-			for _, image := range rel.Images {
-				if image.Type == "primary" {
-					imageURL = image.Uri
-				}
-				backupURL = image.Uri
-			}
-			if imageURL == "" {
-				imageURL = backupURL
-			}
-
-			cardResponse := &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
-			card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100, Result: cardResponse}
+			card := getCard(rel)
+			card.Result = &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
 			addTime := time.Unix(meta.DateAdded, 0)
 			if time.Now().Sub(addTime).Hours() < 24*30*3 {
 				card.Action = pbc.Card_DISMISS
 			}
 			cards.Cards = append(cards.Cards, &card)
-			if !*dryRun {
-				_, err = client.AddCards(context.Background(), &cards)
-				if err != nil {
-					log.Printf("Problem adding cards %v", err)
-				}
-			}
+
 		} else {
-			rel, err := getReleaseFromCollection(dServer, strconv.Itoa(dPort))
-			cards := pbc.CardList{}
-
-			imageURL := ""
-			backupURL := ""
-
-			if rel != nil {
-				for _, image := range rel.Images {
-					if image.Type == "primary" {
-						imageURL = image.Uri
-					}
-					backupURL = image.Uri
-				}
-				if imageURL == "" {
-					imageURL = backupURL
-				}
-			}
-			card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Action: pbc.Card_RATE, Priority: 100}
+			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort))
+			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
 			cards.Cards = append(cards.Cards, &card)
-			if !*dryRun {
-				_, err2 := client.AddCards(context.Background(), &cards)
-				if err2 != nil {
-					log.Printf("Problem adding cards %v", err)
-				}
-			} else {
-				log.Printf("Writing %v", cards)
-			}
 		}
+	}
+	if !*dryRun {
+		addCards(&cards, *host, *port)
 	}
 }
