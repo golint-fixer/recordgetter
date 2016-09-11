@@ -37,6 +37,10 @@ func getRelease(folderName string, host string, port string) (*pbd.Release, *pb.
 		log.Fatalf("Problem getting releases %v", err)
 	}
 
+	if len(r.Releases == 0) {
+		return nil, nil
+	}
+
 	retRel := r.Releases[rand.Intn(len(r.Releases))]
 	meta, err := client.GetMetadata(context.Background(), retRel)
 	if err != nil {
