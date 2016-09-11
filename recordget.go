@@ -248,6 +248,9 @@ func main() {
 			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort))
 			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
+			if rel.Rating <= 0 {
+				card.Action = pbc.Card_RATE
+			}
 			cards.Cards = append(cards.Cards, &card)
 		}
 	}
