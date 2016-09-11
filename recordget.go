@@ -69,6 +69,7 @@ func getReleaseFromCollection(host string, port string) (*pbd.Release, *pb.Relea
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Timing"})
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "TVMusic"})
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Vinyl Boxsets"})
+	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "45s"})
 
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
