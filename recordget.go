@@ -249,6 +249,7 @@ func main() {
 			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
 			if rel.Rating <= 0 {
+				card.Result = &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
 				card.Action = pbc.Card_RATE
 			}
 			cards.Cards = append(cards.Cards, &card)
