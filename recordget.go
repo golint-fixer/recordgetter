@@ -49,7 +49,7 @@ func getReleaseFromPile(folderName string, host string, port string) (*pbd.Relea
 	return retRel, meta
 }
 
-func getReleaseFromCollection(host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
+func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	defer conn.Close()
@@ -69,8 +69,9 @@ func getReleaseFromCollection(host string, port string) (*pbd.Release, *pb.Relea
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Timing"})
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "TVMusic"})
 	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "Vinyl Boxsets"})
-	folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "7s"})
-
+	if allowSeven {
+		folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "7s"})
+	}
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
 		log.Fatalf("Problem getting releases %v", err)
@@ -106,7 +107,7 @@ func getReleaseWithID(folderName string, host string, port string, id int) *pbd.
 	return nil
 }
 
-func deleteCard(hash string, host string, port string) {
+func deleteCard(hash string, host string, port string) bool {
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -114,18 +115,22 @@ func deleteCard(hash string, host string, port string) {
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
+
+	return true
 }
 
-func scoreCard(releaseID int, rating int, host string, port string) {
+func scoreCard(releaseID int, rating int, host string, port string) bool {
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
+	allowSeven := true
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	release := getReleaseWithID("ListeningPile", host, port, releaseID)
 	if release == nil {
 		release = getReleaseWithID("7s", host, port, releaseID)
+		allowSeven = false
 	}
 	release.Rating = int32(rating)
 	// Update the rating and move to the listening box
@@ -133,6 +138,7 @@ func scoreCard(releaseID int, rating int, host string, port string) {
 		client.UpdateRating(context.Background(), release)
 	}
 	client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
+	return allowSeven
 }
 
 func hasCurrentCard(host string, portVal int) bool {
@@ -166,12 +172,14 @@ func addCards(cardList *pbc.CardList, host string, portVal int) {
 	client.AddCards(context.Background(), cardList)
 }
 
-func processCard(host string, portVal int, dryRun bool) {
+func processCard(host string, portVal int, dryRun bool) bool {
 	//Get the latest card from the cardserver
 	cServer, cPort := getIP("cardserver", host, portVal)
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
+
+	allowSeven := true
 
 	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
 	if err != nil {
@@ -191,21 +199,23 @@ func processCard(host string, portVal int, dryRun bool) {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
 				if !dryRun {
 					log.Printf("RATING CARD %v", card)
-					scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
+					allowSeven = scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
 				}
 			} else {
 				if !dryRun {
 					log.Printf("SCORING CARD %v", card)
-					scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
+					allowSeven = scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
 				}
 			}
 			if !dryRun {
 				log.Printf("DELETING CARD %v", card)
-				deleteCard(card.Hash, server, strconv.Itoa(port))
+				allowSeven = deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
 
 		}
 	}
+
+	return allowSeven
 }
 
 func getCard(rel *pbd.Release) pbc.Card {
@@ -231,7 +241,7 @@ func main() {
 	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
 
 	foundCard := hasCurrentCard(*host, *port)
-	processCard(*host, *port, *dryRun)
+	allowSeven := processCard(*host, *port, *dryRun)
 	cards := pbc.CardList{}
 
 	if !foundCard {
@@ -248,7 +258,7 @@ func main() {
 			cards.Cards = append(cards.Cards, &card)
 
 		} else {
-			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort))
+			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort), allowSeven)
 			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
 			if rel.Rating <= 0 {
