@@ -192,23 +192,18 @@ func processCard(host string, portVal int, dryRun bool) bool {
 			server, port := getIP("cardserver", host, portVal)
 			dServer, dPort := getIP("discogssyncer", host, portVal)
 
-			log.Printf("READ CARD %v", card)
-
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
 				if !dryRun {
-					log.Printf("RATING CARD %v", card)
 					allowSeven = scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
 				}
 			} else {
 				if !dryRun {
-					log.Printf("SCORING CARD %v", card)
 					allowSeven = scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
 				}
 			}
 			if !dryRun {
-				log.Printf("DELETING CARD %v", card)
 				allowSeven = deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
 
