@@ -251,12 +251,12 @@ func main() {
 		if rel != nil {
 			card := getCard(rel)
 			card.Result = &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
+			card.Action = pbc.Card_RATE
 			addTime := time.Unix(meta.DateAdded, 0)
 			if time.Now().Sub(addTime).Hours() < 24*30*3 {
 				card.Action = pbc.Card_DISMISS
 			}
 			cards.Cards = append(cards.Cards, &card)
-
 		} else {
 			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort), allowSeven)
 			card := getCard(rel)
