@@ -128,9 +128,11 @@ func scoreCard(releaseID int, rating int, host string, port string) bool {
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	release := getReleaseWithID("ListeningPile", host, port, releaseID)
+	log.Printf("SCORED %v", release)
 	if release == nil {
 		release = getReleaseWithID("7s", host, port, releaseID)
 		allowSeven = false
+		log.Printf("SCORED 7 %v", release)
 	}
 	release.Rating = int32(rating)
 	// Update the rating and move to the listening box
