@@ -188,6 +188,9 @@ func processCard(host string, portVal int, dryRun bool) bool {
 
 	for _, card := range cardList.Cards {
 		if card.Hash == "discogs-process" {
+
+			log.Printf("HERE: %v", card)
+
 			//delete the card
 			server, port := getIP("cardserver", host, portVal)
 			dServer, dPort := getIP("discogssyncer", host, portVal)
@@ -209,6 +212,8 @@ func processCard(host string, portVal int, dryRun bool) bool {
 
 		}
 	}
+
+	log.Printf("Result = %v", allowSeven)
 
 	return allowSeven
 }
