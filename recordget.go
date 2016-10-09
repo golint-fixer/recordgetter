@@ -209,11 +209,9 @@ func processCard(host string, portVal int, dryRun bool) bool {
 			if !dryRun {
 				allowSeven = deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
-
+			log.Printf("Result = %v", allowSeven)
 		}
 	}
-
-	log.Printf("Result = %v", allowSeven)
 
 	return allowSeven
 }
