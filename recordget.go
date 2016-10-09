@@ -107,7 +107,7 @@ func getReleaseWithID(folderName string, host string, port string, id int) *pbd.
 	return nil
 }
 
-func deleteCard(hash string, host string, port string) bool {
+func deleteCard(hash string, host string, port string) {
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -115,8 +115,6 @@ func deleteCard(hash string, host string, port string) bool {
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
-
-	return true
 }
 
 func scoreCard(releaseID int, rating int, host string, port string) bool {
@@ -209,7 +207,7 @@ func processCard(host string, portVal int, dryRun bool) bool {
 				}
 			}
 			if !dryRun {
-				allowSeven = deleteCard(card.Hash, server, strconv.Itoa(port))
+				deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
 			log.Printf("Result = %v", allowSeven)
 		}
