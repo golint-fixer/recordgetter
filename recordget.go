@@ -126,11 +126,9 @@ func scoreCard(releaseID int, rating int, host string, port string) bool {
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	release := getReleaseWithID("ListeningPile", host, port, releaseID)
-	log.Printf("SCORED %v", release)
 	if release == nil {
 		release = getReleaseWithID("7s", host, port, releaseID)
 		allowSeven = false
-		log.Printf("SCORED 7 %v", release)
 	}
 	release.Rating = int32(rating)
 	// Update the rating and move to the listening box
@@ -189,8 +187,6 @@ func processCard(host string, portVal int, dryRun bool) bool {
 	for _, card := range cardList.Cards {
 		if card.Hash == "discogs-process" {
 
-			log.Printf("HERE: %v", card)
-
 			//delete the card
 			server, port := getIP("cardserver", host, portVal)
 			dServer, dPort := getIP("discogssyncer", host, portVal)
@@ -209,7 +205,6 @@ func processCard(host string, portVal int, dryRun bool) bool {
 			if !dryRun {
 				deleteCard(card.Hash, server, strconv.Itoa(port))
 			}
-			log.Printf("Result = %v", allowSeven)
 		}
 	}
 
