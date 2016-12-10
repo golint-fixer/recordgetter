@@ -41,12 +41,25 @@ func getReleaseFromPile(folderName string, host string, port string) (*pbd.Relea
 		return nil, nil
 	}
 
-	retRel := r.Releases[rand.Intn(len(r.Releases))]
-	meta, err := client.GetMetadata(context.Background(), retRel)
+	var newRel *pbd.Release
+	newRel = nil
+	for _, rel := range r.Releases {
+		meta, err2 := client.GetMetadata(context.Background(), rel)
+		if err2 == nil {
+			if meta.DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) {
+				newRel = rel
+			}
+		}
+	}
+
+	if newRel == nil {
+		newRel = r.Releases[rand.Intn(len(r.Releases))]
+	}
+	meta, err := client.GetMetadata(context.Background(), newRel)
 	if err != nil {
 		log.Fatalf("Problem getting metadata %v", err)
 	}
-	return retRel, meta
+	return newRel, meta
 }
 
 func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
