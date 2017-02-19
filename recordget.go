@@ -143,12 +143,14 @@ func scoreCard(releaseID int, rating int, host string, port string) bool {
 		release = getReleaseWithID("7s", host, port, releaseID)
 		allowSeven = false
 	}
-	release.Rating = int32(rating)
-	// Update the rating and move to the listening box
-	if rating > 0 {
-		client.UpdateRating(context.Background(), release)
+	if release != nil {
+		release.Rating = int32(rating)
+		// Update the rating and move to the listening box
+		if rating > 0 {
+			client.UpdateRating(context.Background(), release)
+		}
+		client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
 	}
-	client.MoveToFolder(context.Background(), &pb.ReleaseMove{Release: release, NewFolderId: 673768})
 	return allowSeven
 }
 
