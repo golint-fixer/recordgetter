@@ -90,6 +90,7 @@ func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.R
 		log.Fatalf("Problem getting releases %v", err)
 	}
 
+	log.Printf("Trying to get from %v: %v", len(r.Releases), r.Releases)
 	retRel := r.Releases[rand.Intn(len(r.Releases))]
 	meta, err := client.GetMetadata(context.Background(), retRel)
 	if err != nil {
