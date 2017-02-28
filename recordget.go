@@ -1,17 +1,26 @@
 package main
 
-import "flag"
-import "golang.org/x/net/context"
+import (
+	"flag"
+	"io/ioutil"
+	"log"
+	"strconv"
+
+	"golang.org/x/net/context"
+
+	pb "github.com/brotherlogic/discogssyncer/server"
+
+	pbdi "github.com/brotherlogic/discovery/proto"
+)
+
 import "google.golang.org/grpc"
-import "log"
+
 import "math/rand"
-import "strconv"
 
 import "time"
 
-import pb "github.com/brotherlogic/discogssyncer/server"
 import pbd "github.com/brotherlogic/godiscogs"
-import pbdi "github.com/brotherlogic/discovery/proto"
+
 import pbc "github.com/brotherlogic/cardserver/card"
 
 func getIP(servername string, ip string, port int) (string, int) {
@@ -248,6 +257,11 @@ func main() {
 	var host = flag.String("host", "10.0.1.17", "Hostname of server.")
 	var port = flag.Int("port", 50055, "Port number of server")
 	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
+	var quiet = flag.Bool("quiet", true, "Don't log anything.")
+
+	if *quiet {
+		log.SetOutput(ioutil.Discard)
+	}
 
 	foundCard := hasCurrentCard(*host, *port)
 	allowSeven := processCard(*host, *port, *dryRun)
