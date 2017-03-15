@@ -14,6 +14,7 @@ import (
 )
 
 import "google.golang.org/grpc"
+import "google.golang.org/grpc/grpclog"
 
 import "math/rand"
 
@@ -29,7 +30,10 @@ func getIP(servername string, ip string, port int) (string, int) {
 
 	registry := pbdi.NewDiscoveryServiceClient(conn)
 	entry := pbdi.RegistryEntry{Name: servername}
-	r, _ := registry.Discover(context.Background(), &entry)
+	r, err := registry.Discover(context.Background(), &entry)
+	if err != nil {
+		return "", -1
+	}
 	return r.Ip, int(r.Port)
 }
 
@@ -168,12 +172,15 @@ func hasCurrentCard(host string, portVal int) bool {
 	//Get the latest card from the cardserver
 	cServer, cPort := getIP("cardserver", host, portVal)
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Whoops: %v", err)
+	}
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 
 	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
 	if err != nil {
-		panic(err)
+		log.Fatalf("Whoops2: %v", err)
 	}
 
 	for _, card := range cardList.Cards {
@@ -254,7 +261,7 @@ func getCard(rel *pbd.Release) pbc.Card {
 }
 
 func main() {
-	var host = flag.String("host", "192.168.86.34", "Hostname of server.")
+	var host = flag.String("host", "192.168.86.33", "Hostname of server.")
 	var port = flag.Int("port", 50055, "Port number of server")
 	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
 	var quiet = flag.Bool("quiet", true, "Don't log anything.")
@@ -262,6 +269,7 @@ func main() {
 
 	if *quiet {
 		log.SetOutput(ioutil.Discard)
+		grpclog.SetLogger(log.New(ioutil.Discard, "", -1))
 	}
 
 	foundCard := hasCurrentCard(*host, *port)
