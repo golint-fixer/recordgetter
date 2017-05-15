@@ -32,8 +32,11 @@ func getIP(servername string, ip string, port int) (string, int) {
 	entry := pbdi.RegistryEntry{Name: servername}
 	r, err := registry.Discover(context.Background(), &entry)
 	if err != nil {
+		log.Printf("Error discovering %v -> %v", servername, err)
 		return "", -1
 	}
+
+	log.Printf("Found %v -> %v:%v", servername, r.Ip, r.Port)
 	return r.Ip, int(r.Port)
 }
 
@@ -51,6 +54,7 @@ func getReleaseFromPile(folderName string, host string, port string) (*pbd.Relea
 	}
 
 	if len(r.Releases) == 0 {
+		log.Printf("No releases in folder: %v", folderList)
 		return nil, nil
 	}
 
