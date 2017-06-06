@@ -43,6 +43,9 @@ func getIP(servername string, ip string, port int) (string, int) {
 func getReleaseFromPile(folderName string, host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+	if err != nil {
+		log.Printf("Error dialling server: %v", err)
+	}
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	folderList := &pb.FolderList{}
@@ -50,7 +53,7 @@ func getReleaseFromPile(folderName string, host string, port string) (*pbd.Relea
 	folderList.Folders = append(folderList.Folders, folder)
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
-		log.Fatalf("Problem getting releases %v", err)
+		log.Fatalf("Problem getting releases from Pile %v", err)
 	}
 
 	if len(r.Releases) == 0 {
@@ -104,7 +107,7 @@ func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.R
 	}
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
-		log.Fatalf("Problem getting releases %v", err)
+		log.Fatalf("Problem getting releases from collection %v", err)
 	}
 
 	log.Printf("Trying to get from %v: %v", len(r.Releases), r.Releases)
@@ -119,6 +122,11 @@ func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.R
 func getReleaseWithID(folderName string, host string, port string, id int) *pbd.Release {
 	rand.Seed(time.Now().UTC().UnixNano())
 	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+
+	if err != nil {
+		log.Fatalf("Cannto dial %v", err)
+	}
+
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	folderList := &pb.FolderList{}
@@ -126,7 +134,7 @@ func getReleaseWithID(folderName string, host string, port string, id int) *pbd.
 	folderList.Folders = append(folderList.Folders, folder)
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
-		log.Fatalf("Problem getting releases %v", err)
+		log.Fatalf("Problem getting releases with a given ID %v", err)
 	}
 
 	for _, release := range r.Releases {
@@ -265,7 +273,7 @@ func getCard(rel *pbd.Release) pbc.Card {
 }
 
 func main() {
-	var host = flag.String("host", "192.168.86.34", "Hostname of server.")
+	var host = flag.String("host", "192.168.86.64", "Hostname of server.")
 	var port = flag.Int("port", 50055, "Port number of server")
 	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
 	var quiet = flag.Bool("quiet", true, "Don't log anything.")
@@ -275,6 +283,8 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 		grpclog.SetLogger(log.New(ioutil.Discard, "", -1))
 	}
+
+	log.Printf("Logging is on!")
 
 	foundCard := hasCurrentCard(*host, *port)
 	allowSeven := processCard(*host, *port, *dryRun)
