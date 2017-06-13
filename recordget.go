@@ -4,28 +4,32 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"strconv"
+	"time"
 
+	"github.com/brotherlogic/goserver"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
+	pbc "github.com/brotherlogic/cardserver/card"
 	pb "github.com/brotherlogic/discogssyncer/server"
-
 	pbdi "github.com/brotherlogic/discovery/proto"
+	pbd "github.com/brotherlogic/godiscogs"
 )
 
-import "google.golang.org/grpc"
-import "google.golang.org/grpc/grpclog"
+//Server main server type
+type Server struct {
+	*goserver.GoServer
+	serving bool
+}
 
-import "math/rand"
+const (
+	wait = 1000
+)
 
-import "time"
-
-import pbd "github.com/brotherlogic/godiscogs"
-
-import pbc "github.com/brotherlogic/cardserver/card"
-
-func getIP(servername string, ip string, port int) (string, int) {
-	conn, _ := grpc.Dial(ip+":"+strconv.Itoa(port), grpc.WithInsecure())
+func getIP(servername string) (string, int) {
+	conn, _ := grpc.Dial("192.168.86.64:50055", grpc.WithInsecure())
 	defer conn.Close()
 
 	registry := pbdi.NewDiscoveryServiceClient(conn)
@@ -40,9 +44,10 @@ func getIP(servername string, ip string, port int) (string, int) {
 	return r.Ip, int(r.Port)
 }
 
-func getReleaseFromPile(folderName string, host string, port string) (*pbd.Release, *pb.ReleaseMetadata) {
+func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+	host, port := getIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Error dialling server: %v", err)
 	}
@@ -82,9 +87,10 @@ func getReleaseFromPile(folderName string, host string, port string) (*pbd.Relea
 	return newRel, meta
 }
 
-func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
+func getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+	host, port := getIP("discogssyncer")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 
@@ -119,9 +125,10 @@ func getReleaseFromCollection(host string, port string, allowSeven bool) (*pbd.R
 	return retRel, meta
 }
 
-func getReleaseWithID(folderName string, host string, port string, id int) *pbd.Release {
+func getReleaseWithID(folderName string, id int) *pbd.Release {
 	rand.Seed(time.Now().UTC().UnixNano())
-	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+	host, port := getIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
 		log.Fatalf("Cannto dial %v", err)
@@ -146,8 +153,9 @@ func getReleaseWithID(folderName string, host string, port string, id int) *pbd.
 	return nil
 }
 
-func deleteCard(hash string, host string, port string) {
-	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+func deleteCard(hash string) {
+	host, port := getIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
@@ -156,17 +164,18 @@ func deleteCard(hash string, host string, port string) {
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
 }
 
-func scoreCard(releaseID int, rating int, host string, port string) bool {
-	conn, err := grpc.Dial(host+":"+port, grpc.WithInsecure())
+func scoreCard(releaseID int, rating int) bool {
+	host, port := getIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
 	allowSeven := true
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
-	release := getReleaseWithID("ListeningPile", host, port, releaseID)
+	release := getReleaseWithID("ListeningPile", releaseID)
 	if release == nil {
-		release = getReleaseWithID("7s", host, port, releaseID)
+		release = getReleaseWithID("7s", releaseID)
 		allowSeven = false
 	}
 	if release != nil {
@@ -180,9 +189,9 @@ func scoreCard(releaseID int, rating int, host string, port string) bool {
 	return allowSeven
 }
 
-func hasCurrentCard(host string, portVal int) bool {
+func hasCurrentCard() bool {
 	//Get the latest card from the cardserver
-	cServer, cPort := getIP("cardserver", host, portVal)
+	cServer, cPort := getIP("cardserver")
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Whoops: %v", err)
@@ -203,8 +212,8 @@ func hasCurrentCard(host string, portVal int) bool {
 	return false
 }
 
-func addCards(cardList *pbc.CardList, host string, portVal int) {
-	cServer, cPort := getIP("cardserver", host, portVal)
+func addCards(cardList *pbc.CardList) {
+	cServer, cPort := getIP("cardserver")
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -214,10 +223,10 @@ func addCards(cardList *pbc.CardList, host string, portVal int) {
 	client.AddCards(context.Background(), cardList)
 }
 
-func processCard(host string, portVal int, dryRun bool) bool {
+func processCard(dryRun bool) bool {
 	//Get the latest card from the cardserver
-	cServer, cPort := getIP("cardserver", host, portVal)
-	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
+	cServer, cPort := getIP("cardserver")
+	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 
@@ -230,24 +239,19 @@ func processCard(host string, portVal int, dryRun bool) bool {
 
 	for _, card := range cardList.Cards {
 		if card.Hash == "discogs-process" {
-
-			//delete the card
-			server, port := getIP("cardserver", host, portVal)
-			dServer, dPort := getIP("discogssyncer", host, portVal)
-
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
 				if !dryRun {
-					allowSeven = scoreCard(releaseID, rating, dServer, strconv.Itoa(dPort))
+					allowSeven = scoreCard(releaseID, rating)
 				}
 			} else {
 				if !dryRun {
-					allowSeven = scoreCard(releaseID, -1, dServer, strconv.Itoa(dPort))
+					allowSeven = scoreCard(releaseID, -1)
 				}
 			}
 			if !dryRun {
-				deleteCard(card.Hash, server, strconv.Itoa(port))
+				deleteCard(card.Hash)
 			}
 		}
 	}
@@ -272,27 +276,23 @@ func getCard(rel *pbd.Release) pbc.Card {
 	return card
 }
 
-func main() {
-	var host = flag.String("host", "192.168.86.64", "Hostname of server.")
-	var port = flag.Int("port", 50055, "Port number of server")
-	var dryRun = flag.Bool("dry_run", false, "If true, takes no action")
-	var quiet = flag.Bool("quiet", true, "Don't log anything.")
-	flag.Parse()
-
-	if *quiet {
-		log.SetOutput(ioutil.Discard)
-		grpclog.SetLogger(log.New(ioutil.Discard, "", -1))
+// GetRecords runs the get records loop
+func (s Server) GetRecords() {
+	for s.serving {
+		time.Sleep(wait)
+		runSingle()
 	}
+}
 
+func runSingle() {
 	log.Printf("Logging is on!")
 
-	foundCard := hasCurrentCard(*host, *port)
-	allowSeven := processCard(*host, *port, *dryRun)
+	foundCard := hasCurrentCard()
+	allowSeven := processCard(false)
 	cards := pbc.CardList{}
 
 	if !foundCard {
-		dServer, dPort := getIP("discogssyncer", *host, *port)
-		rel, meta := getReleaseFromPile("ListeningPile", dServer, strconv.Itoa(dPort))
+		rel, meta := getReleaseFromPile("ListeningPile")
 
 		if rel != nil {
 			card := getCard(rel)
@@ -304,7 +304,7 @@ func main() {
 			}
 			cards.Cards = append(cards.Cards, &card)
 		} else {
-			rel, _ := getReleaseFromCollection(dServer, strconv.Itoa(dPort), allowSeven)
+			rel, _ := getReleaseFromCollection(allowSeven)
 			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
 			if rel.Rating <= 0 {
@@ -314,7 +314,40 @@ func main() {
 			cards.Cards = append(cards.Cards, &card)
 		}
 	}
-	if !*dryRun {
-		addCards(&cards, *host, *port)
+	addCards(&cards)
+}
+
+//Init a record getter
+func Init() *Server {
+	s := &Server{GoServer: &goserver.GoServer{}, serving: true}
+	s.Register = s
+	return s
+}
+
+// DoRegister does RPC registration
+func (s Server) DoRegister(server *grpc.Server) {
+	// Noop
+}
+
+// ReportHealth alerts if we're not healthy
+func (s Server) ReportHealth() bool {
+	return true
+}
+
+func main() {
+	var quiet = flag.Bool("quiet", true, "Show all output")
+	flag.Parse()
+
+	server := Init()
+
+	//Turn off logging
+	if *quiet {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
 	}
+
+	server.PrepServer()
+	server.RegisterServer("recordgetter", false)
+	server.RegisterServingTask(server.GetRecords)
+	server.Serve()
 }
