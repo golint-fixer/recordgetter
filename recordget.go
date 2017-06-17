@@ -21,7 +21,8 @@ import (
 //Server main server type
 type Server struct {
 	*goserver.GoServer
-	serving bool
+	serving    bool
+	delivering bool
 }
 
 const (
@@ -29,6 +30,7 @@ const (
 )
 
 func getIP(servername string) (string, int) {
+	log.Printf("Looking for %v", servername)
 	conn, _ := grpc.Dial("192.168.86.64:50055", grpc.WithInsecure())
 	defer conn.Close()
 
@@ -45,6 +47,7 @@ func getIP(servername string) (string, int) {
 }
 
 func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
+	log.Printf("Getting release from %v", folderName)
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := getIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -84,6 +87,7 @@ func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	if err != nil {
 		log.Fatalf("Problem getting metadata %v", err)
 	}
+	log.Printf("Found %v", newRel)
 	return newRel, meta
 }
 
@@ -199,12 +203,14 @@ func hasCurrentCard() bool {
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 
+	log.Printf("GETTING CARDS")
 	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
 	if err != nil {
 		log.Fatalf("Whoops2: %v", err)
 	}
 
 	for _, card := range cardList.Cards {
+		log.Printf("CHECKING %v", card)
 		if card.Hash == "discogs" {
 			return true
 		}
@@ -220,10 +226,12 @@ func addCards(cardList *pbc.CardList) {
 	}
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
+	log.Printf("CALLING ADD CARDS")
 	client.AddCards(context.Background(), cardList)
+	log.Printf("DONE")
 }
 
-func processCard(dryRun bool) bool {
+func (s Server) processCard() bool {
 	//Get the latest card from the cardserver
 	cServer, cPort := getIP("cardserver")
 	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
@@ -242,15 +250,15 @@ func processCard(dryRun bool) bool {
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
-				if !dryRun {
+				if s.delivering {
 					allowSeven = scoreCard(releaseID, rating)
 				}
 			} else {
-				if !dryRun {
+				if s.delivering {
 					allowSeven = scoreCard(releaseID, -1)
 				}
 			}
-			if !dryRun {
+			if s.delivering {
 				deleteCard(card.Hash)
 			}
 		}
@@ -279,17 +287,21 @@ func getCard(rel *pbd.Release) pbc.Card {
 // GetRecords runs the get records loop
 func (s Server) GetRecords() {
 	for s.serving {
+		log.Printf("Sleepinging")
 		time.Sleep(wait)
-		runSingle()
+		log.Printf("Running a single")
+		s.runSingle()
 	}
 }
 
-func runSingle() {
+func (s Server) runSingle() {
 	log.Printf("Logging is on!")
 
 	foundCard := hasCurrentCard()
-	allowSeven := processCard(false)
+	allowSeven := s.processCard()
 	cards := pbc.CardList{}
+
+	log.Printf("CURRENT Card: %v", foundCard)
 
 	if !foundCard {
 		rel, meta := getReleaseFromPile("ListeningPile")
@@ -314,7 +326,12 @@ func runSingle() {
 			cards.Cards = append(cards.Cards, &card)
 		}
 	}
-	addCards(&cards)
+
+	log.Printf("RUNNING SINGLE: %v", s.delivering)
+	if s.delivering {
+		addCards(&cards)
+	}
+	log.Printf("DONE")
 }
 
 //Init a record getter
@@ -332,6 +349,12 @@ func (s Server) DoRegister(server *grpc.Server) {
 // ReportHealth alerts if we're not healthy
 func (s Server) ReportHealth() bool {
 	return true
+}
+
+// Mote promotes/demotes this server
+func (s Server) Mote(master bool) error {
+	s.delivering = master
+	return nil
 }
 
 func main() {
