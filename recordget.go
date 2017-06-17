@@ -26,7 +26,7 @@ type Server struct {
 }
 
 const (
-	wait = 5000
+	wait = 5 * time.Second
 )
 
 func getIP(servername string) (string, int) {
@@ -287,7 +287,7 @@ func getCard(rel *pbd.Release) pbc.Card {
 // GetRecords runs the get records loop
 func (s Server) GetRecords() {
 	for s.serving {
-		log.Printf("Sleepinging")
+		log.Printf("Sleepinging %v", wait)
 		time.Sleep(wait)
 		log.Printf("Running a single")
 		s.runSingle()
