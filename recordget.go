@@ -336,7 +336,7 @@ func (s Server) runSingle() {
 
 //Init a record getter
 func Init() *Server {
-	s := &Server{GoServer: &goserver.GoServer{}, serving: true}
+	s := &Server{GoServer: &goserver.GoServer{}, serving: true, delivering: true}
 	s.Register = s
 	return s
 }
