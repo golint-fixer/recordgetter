@@ -26,7 +26,7 @@ type Server struct {
 }
 
 const (
-	wait = 1000
+	wait = 5000
 )
 
 func getIP(servername string) (string, int) {
