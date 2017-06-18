@@ -148,27 +148,34 @@ func getReleaseWithID(folderName string, id int) *pbd.Release {
 		log.Fatalf("Problem getting releases with a given ID %v", err)
 	}
 
+	//log.Printf("CHECKING release in %v for %v with %v", folderName, id, r)
 	for _, release := range r.Releases {
+		if folderName == "ListeningPile" {
+			log.Printf("TRYING %v with %v", release, id)
+		}
 		if int(release.Id) == id {
 			return release
 		}
 	}
-
+	log.Printf("NOT FOUND")
 	return nil
 }
 
 func deleteCard(hash string) {
-	host, port := getIP("discogssyncer")
+	log.Printf("DELETING: %v", hash)
+	host, port := getIP("cardserver")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
+	log.Printf("DELETE: %v onto %v:%v", &pbc.DeleteRequest{Hash: hash}, host, port)
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
 }
 
 func scoreCard(releaseID int, rating int) bool {
+	log.Printf("Scoring Card %v", releaseID)
 	host, port := getIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
@@ -177,11 +184,13 @@ func scoreCard(releaseID int, rating int) bool {
 	allowSeven := true
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
+	log.Printf("Searching: %v", releaseID)
 	release := getReleaseWithID("ListeningPile", releaseID)
 	if release == nil {
 		release = getReleaseWithID("7s", releaseID)
 		allowSeven = false
 	}
+	log.Printf("Got release: %v", release)
 	if release != nil {
 		release.Rating = int32(rating)
 		// Update the rating and move to the listening box
@@ -232,6 +241,7 @@ func addCards(cardList *pbc.CardList) {
 }
 
 func (s Server) processCard() bool {
+	log.Printf("PROCESS CARD")
 	//Get the latest card from the cardserver
 	cServer, cPort := getIP("cardserver")
 	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
@@ -246,6 +256,7 @@ func (s Server) processCard() bool {
 	}
 
 	for _, card := range cardList.Cards {
+		log.Printf("CARD %v", card.Hash)
 		if card.Hash == "discogs-process" {
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
@@ -258,6 +269,7 @@ func (s Server) processCard() bool {
 					allowSeven = scoreCard(releaseID, -1)
 				}
 			}
+			log.Printf("DELETE: %v", s.delivering)
 			if s.delivering {
 				deleteCard(card.Hash)
 			}
