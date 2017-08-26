@@ -385,10 +385,6 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	v, err := getReleaseFromPile("ListeningPile")
-	log.Printf("%v -> %v", v, err)
-	log.Fatalf("Blah")
-
 	server.PrepServer()
 	server.RegisterServer("recordgetter", false)
 	server.RegisterServingTask(server.GetRecords)
