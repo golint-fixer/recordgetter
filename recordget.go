@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"strconv"
 	"time"
@@ -59,6 +60,7 @@ func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	folderList := &pb.FolderList{}
 	folder := &pbd.Folder{Name: folderName}
 	folderList.Folders = append(folderList.Folders, folder)
+	log.Printf("HERE: %v", folderList)
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	if err != nil {
 		log.Fatalf("Problem getting releases from Pile %v", err)
@@ -71,11 +73,13 @@ func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 
 	var newRel *pbd.Release
 	newRel = nil
+	pDate := int64(math.MaxInt64)
 	for _, rel := range r.Releases {
 		meta, err2 := client.GetMetadata(context.Background(), rel)
 		if err2 == nil {
-			if meta.DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) {
+			if meta.DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) && meta.DateAdded < pDate {
 				newRel = rel
+				pDate = meta.DateAdded
 			}
 		}
 	}
@@ -380,6 +384,10 @@ func main() {
 		log.SetFlags(0)
 		log.SetOutput(ioutil.Discard)
 	}
+
+	v, err := getReleaseFromPile("ListeningPile")
+	log.Printf("%v -> %v", v, err)
+	log.Fatalf("Blah")
 
 	server.PrepServer()
 	server.RegisterServer("recordgetter", false)
