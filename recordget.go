@@ -15,7 +15,6 @@ import (
 
 	pbc "github.com/brotherlogic/cardserver/card"
 	pb "github.com/brotherlogic/discogssyncer/server"
-	pbdi "github.com/brotherlogic/discovery/proto"
 	pbd "github.com/brotherlogic/godiscogs"
 )
 
@@ -30,27 +29,10 @@ const (
 	wait = 5 * time.Second
 )
 
-func getIP(servername string) (string, int) {
-	log.Printf("Looking for %v", servername)
-	conn, _ := grpc.Dial("192.168.86.64:50055", grpc.WithInsecure())
-	defer conn.Close()
-
-	registry := pbdi.NewDiscoveryServiceClient(conn)
-	entry := pbdi.RegistryEntry{Name: servername}
-	r, err := registry.Discover(context.Background(), &entry)
-	if err != nil {
-		log.Printf("Error discovering %v -> %v", servername, err)
-		return "", -1
-	}
-
-	log.Printf("Found %v -> %v:%v", servername, r.Ip, r.Port)
-	return r.Ip, int(r.Port)
-}
-
-func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
+func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	log.Printf("Getting release from %v", folderName)
 	rand.Seed(time.Now().UTC().UnixNano())
-	host, port := getIP("discogssyncer")
+	host, port := s.GetIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Error dialling server: %v", err)
@@ -95,9 +77,9 @@ func getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	return newRel, meta
 }
 
-func getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
+func (s *Server) getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	host, port := getIP("discogssyncer")
+	host, port := s.GetIP("discogssyncer")
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
@@ -133,9 +115,9 @@ func getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.ReleaseMetadat
 	return retRel, meta
 }
 
-func getReleaseWithID(folderName string, id int) *pbd.Release {
+func (s *Server) getReleaseWithID(folderName string, id int) *pbd.Release {
 	rand.Seed(time.Now().UTC().UnixNano())
-	host, port := getIP("discogssyncer")
+	host, port := s.GetIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -165,9 +147,9 @@ func getReleaseWithID(folderName string, id int) *pbd.Release {
 	return nil
 }
 
-func deleteCard(hash string) {
+func (s *Server) deleteCard(hash string) {
 	log.Printf("DELETING: %v", hash)
-	host, port := getIP("cardserver")
+	host, port := s.GetIP("cardserver")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -178,9 +160,9 @@ func deleteCard(hash string) {
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
 }
 
-func scoreCard(releaseID int, rating int) bool {
+func (s *Server) scoreCard(releaseID int, rating int) bool {
 	log.Printf("Scoring Card %v", releaseID)
-	host, port := getIP("discogssyncer")
+	host, port := s.GetIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -189,9 +171,9 @@ func scoreCard(releaseID int, rating int) bool {
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	log.Printf("Searching: %v", releaseID)
-	release := getReleaseWithID("ListeningPile", releaseID)
+	release := s.getReleaseWithID("ListeningPile", releaseID)
 	if release == nil {
-		release = getReleaseWithID("7s", releaseID)
+		release = s.getReleaseWithID("7s", releaseID)
 		allowSeven = false
 	}
 	log.Printf("Got release: %v", release)
@@ -206,9 +188,9 @@ func scoreCard(releaseID int, rating int) bool {
 	return allowSeven
 }
 
-func hasCurrentCard() bool {
+func (s *Server) hasCurrentCard() bool {
 	//Get the latest card from the cardserver
-	cServer, cPort := getIP("cardserver")
+	cServer, cPort := s.GetIP("cardserver")
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Whoops: %v", err)
@@ -231,8 +213,8 @@ func hasCurrentCard() bool {
 	return false
 }
 
-func addCards(cardList *pbc.CardList) {
-	cServer, cPort := getIP("cardserver")
+func (s *Server) addCards(cardList *pbc.CardList) {
+	cServer, cPort := s.GetIP("cardserver")
 	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -247,7 +229,7 @@ func addCards(cardList *pbc.CardList) {
 func (s Server) processCard() bool {
 	log.Printf("PROCESS CARD")
 	//Get the latest card from the cardserver
-	cServer, cPort := getIP("cardserver")
+	cServer, cPort := s.GetIP("cardserver")
 	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
@@ -266,16 +248,16 @@ func (s Server) processCard() bool {
 			if card.ActionMetadata != nil {
 				rating, _ := strconv.Atoi(card.ActionMetadata[0])
 				if s.delivering {
-					allowSeven = scoreCard(releaseID, rating)
+					allowSeven = s.scoreCard(releaseID, rating)
 				}
 			} else {
 				if s.delivering {
-					allowSeven = scoreCard(releaseID, -1)
+					allowSeven = s.scoreCard(releaseID, -1)
 				}
 			}
 			log.Printf("DELETE: %v", s.delivering)
 			if s.delivering {
-				deleteCard(card.Hash)
+				s.deleteCard(card.Hash)
 			}
 		}
 	}
@@ -313,14 +295,14 @@ func (s Server) GetRecords() {
 func (s Server) runSingle() {
 	log.Printf("Logging is on!")
 
-	foundCard := hasCurrentCard()
+	foundCard := s.hasCurrentCard()
 	allowSeven := s.processCard()
 	cards := pbc.CardList{}
 
 	log.Printf("CURRENT Card: %v", foundCard)
 
 	if !foundCard {
-		rel, meta := getReleaseFromPile("ListeningPile")
+		rel, meta := s.getReleaseFromPile("ListeningPile")
 
 		if rel != nil {
 			card := getCard(rel)
@@ -332,7 +314,7 @@ func (s Server) runSingle() {
 			}
 			cards.Cards = append(cards.Cards, &card)
 		} else {
-			rel, _ := getReleaseFromCollection(allowSeven)
+			rel, _ := s.getReleaseFromCollection(allowSeven)
 			card := getCard(rel)
 			card.Action = pbc.Card_DISMISS
 			if rel.Rating <= 0 {
@@ -345,7 +327,7 @@ func (s Server) runSingle() {
 
 	log.Printf("RUNNING SINGLE: %v", s.delivering)
 	if s.delivering {
-		addCards(&cards)
+		s.addCards(&cards)
 	}
 	log.Printf("DONE")
 }
