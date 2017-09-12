@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package recordgetter;
+
+import "github.com/brotherlogic/godiscogs/godiscogs.proto";
+
+message Empty {}
+
+service RecordGetter {
+  rpc GetRecord(Empty) returns (godiscogs.Release);
+}
