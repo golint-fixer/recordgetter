@@ -16,6 +16,7 @@ import (
 	pbc "github.com/brotherlogic/cardserver/card"
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
+	pbrg "github.com/brotherlogic/recordgetter/proto"
 )
 
 //Server main server type
@@ -341,7 +342,7 @@ func Init() *Server {
 
 // DoRegister does RPC registration
 func (s Server) DoRegister(server *grpc.Server) {
-	// Noop
+	pbrg.RegisterRecordGetterServer(server, &s)
 }
 
 // ReportHealth alerts if we're not healthy
