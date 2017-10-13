@@ -31,26 +31,17 @@ const (
 )
 
 func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
-	log.Printf("Getting release from %v", folderName)
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("discogssyncer")
-	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
-	if err != nil {
-		log.Printf("Error dialling server: %v", err)
-	}
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	folderList := &pb.FolderList{}
 	folder := &pbd.Folder{Name: folderName}
 	folderList.Folders = append(folderList.Folders, folder)
-	log.Printf("HERE: %v", folderList)
-	r, err := client.GetReleasesInFolder(context.Background(), folderList)
-	if err != nil {
-		log.Fatalf("Problem getting releases from Pile %v", err)
-	}
+	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
 	if len(r.Releases) == 0 {
-		log.Printf("No releases in folder: %v", folderList)
 		return nil, nil
 	}
 
@@ -70,11 +61,7 @@ func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.Releas
 	if newRel == nil {
 		newRel = r.Releases[rand.Intn(len(r.Releases))]
 	}
-	meta, err := client.GetMetadata(context.Background(), newRel)
-	if err != nil {
-		log.Fatalf("Problem getting metadata %v", err)
-	}
-	log.Printf("Found %v", newRel)
+	meta, _ := client.GetMetadata(context.Background(), newRel)
 	return newRel, meta
 }
 
@@ -102,54 +89,35 @@ func (s *Server) getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.Re
 	if allowSeven {
 		folderList.Folders = append(folderList.Folders, &pbd.Folder{Name: "7s"})
 	}
-	r, err := client.GetReleasesInFolder(context.Background(), folderList)
-	if err != nil {
-		log.Fatalf("Problem getting releases from collection %v", err)
-	}
+	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
-	log.Printf("Trying to get from %v: %v", len(r.Releases), r.Releases)
 	retRel := r.Releases[rand.Intn(len(r.Releases))]
-	meta, err := client.GetMetadata(context.Background(), retRel)
-	if err != nil {
-		log.Fatalf("Problem getting metadata %v", err)
-	}
+	meta, _ := client.GetMetadata(context.Background(), retRel)
+
 	return retRel, meta
 }
 
 func (s *Server) getReleaseWithID(folderName string, id int) *pbd.Release {
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("discogssyncer")
-	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
-
-	if err != nil {
-		log.Fatalf("Cannto dial %v", err)
-	}
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	folderList := &pb.FolderList{}
 	folder := &pbd.Folder{Name: folderName}
 	folderList.Folders = append(folderList.Folders, folder)
-	r, err := client.GetReleasesInFolder(context.Background(), folderList)
-	if err != nil {
-		log.Fatalf("Problem getting releases with a given ID %v", err)
-	}
+	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
-	//log.Printf("CHECKING release in %v for %v with %v", folderName, id, r)
 	for _, release := range r.Releases {
-		if folderName == "ListeningPile" {
-			log.Printf("TRYING %v with %v", release, id)
-		}
 		if int(release.Id) == id {
 			return release
 		}
 	}
-	log.Printf("NOT FOUND")
 	return nil
 }
 
 func (s *Server) deleteCard(hash string) {
-	log.Printf("DELETING: %v", hash)
 	host, port := s.GetIP("cardserver")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
@@ -157,12 +125,10 @@ func (s *Server) deleteCard(hash string) {
 	}
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
-	log.Printf("DELETE: %v onto %v:%v", &pbc.DeleteRequest{Hash: hash}, host, port)
 	client.DeleteCards(context.Background(), &pbc.DeleteRequest{Hash: hash})
 }
 
 func (s *Server) scoreCard(releaseID int, rating int) bool {
-	log.Printf("Scoring Card %v", releaseID)
 	host, port := s.GetIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
@@ -171,13 +137,11 @@ func (s *Server) scoreCard(releaseID int, rating int) bool {
 	allowSeven := true
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
-	log.Printf("Searching: %v", releaseID)
 	release := s.getReleaseWithID("ListeningPile", releaseID)
 	if release == nil {
 		release = s.getReleaseWithID("7s", releaseID)
 		allowSeven = false
 	}
-	log.Printf("Got release: %v", release)
 	if release != nil {
 		release.Rating = int32(rating)
 		// Update the rating and move to the listening box
@@ -192,21 +156,13 @@ func (s *Server) scoreCard(releaseID int, rating int) bool {
 func (s *Server) hasCurrentCard() bool {
 	//Get the latest card from the cardserver
 	cServer, cPort := s.GetIP("cardserver")
-	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Whoops: %v", err)
-	}
+	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
 
-	log.Printf("GETTING CARDS")
-	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
-	if err != nil {
-		log.Fatalf("Whoops2: %v", err)
-	}
+	cardList, _ := client.GetCards(context.Background(), &pbc.Empty{})
 
 	for _, card := range cardList.Cards {
-		log.Printf("CHECKING %v", card)
 		if card.Hash == "discogs" {
 			return true
 		}
@@ -216,19 +172,13 @@ func (s *Server) hasCurrentCard() bool {
 
 func (s *Server) addCards(cardList *pbc.CardList) {
 	cServer, cPort := s.GetIP("cardserver")
-	conn, err := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
-	if err != nil {
-		panic(err)
-	}
+	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbc.NewCardServiceClient(conn)
-	log.Printf("CALLING ADD CARDS")
 	client.AddCards(context.Background(), cardList)
-	log.Printf("DONE")
 }
 
 func (s Server) processCard() (bool, error) {
-	log.Printf("PROCESS CARD")
 	//Get the latest card from the cardserver
 	cServer, cPort := s.GetIP("cardserver")
 	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
@@ -243,7 +193,6 @@ func (s Server) processCard() (bool, error) {
 	}
 
 	for _, card := range cardList.Cards {
-		log.Printf("CARD %v", card.Hash)
 		if card.Hash == "discogs-process" {
 			releaseID, _ := strconv.Atoi(card.Text)
 			if card.ActionMetadata != nil {
@@ -256,7 +205,6 @@ func (s Server) processCard() (bool, error) {
 					allowSeven = s.scoreCard(releaseID, -1)
 				}
 			}
-			log.Printf("DELETE: %v", s.delivering)
 			if s.delivering {
 				s.deleteCard(card.Hash)
 			}
@@ -286,16 +234,12 @@ func getCard(rel *pbd.Release) pbc.Card {
 // GetRecords runs the get records loop
 func (s Server) GetRecords() {
 	for s.serving {
-		log.Printf("Sleepinging %v", wait)
 		time.Sleep(wait)
-		log.Printf("Running a single")
 		s.runSingle()
 	}
 }
 
 func (s Server) runSingle() {
-	log.Printf("Logging is on!")
-
 	foundCard := s.hasCurrentCard()
 	allowSeven, err := s.processCard()
 
@@ -304,8 +248,6 @@ func (s Server) runSingle() {
 	}
 
 	cards := pbc.CardList{}
-
-	log.Printf("CURRENT Card: %v", foundCard)
 
 	if !foundCard {
 		rel, meta := s.getReleaseFromPile("ListeningPile")
@@ -331,11 +273,9 @@ func (s Server) runSingle() {
 		}
 	}
 
-	log.Printf("RUNNING SINGLE: %v", s.delivering)
 	if s.delivering {
 		s.addCards(&cards)
 	}
-	log.Printf("DONE")
 }
 
 //Init a record getter
