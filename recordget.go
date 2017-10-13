@@ -227,7 +227,7 @@ func (s *Server) addCards(cardList *pbc.CardList) {
 	log.Printf("DONE")
 }
 
-func (s Server) processCard() bool {
+func (s Server) processCard() (bool, error) {
 	log.Printf("PROCESS CARD")
 	//Get the latest card from the cardserver
 	cServer, cPort := s.GetIP("cardserver")
@@ -239,7 +239,7 @@ func (s Server) processCard() bool {
 
 	cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 
 	for _, card := range cardList.Cards {
@@ -263,7 +263,7 @@ func (s Server) processCard() bool {
 		}
 	}
 
-	return allowSeven
+	return allowSeven, nil
 }
 
 func getCard(rel *pbd.Release) pbc.Card {
@@ -297,7 +297,12 @@ func (s Server) runSingle() {
 	log.Printf("Logging is on!")
 
 	foundCard := s.hasCurrentCard()
-	allowSeven := s.processCard()
+	allowSeven, err := s.processCard()
+
+	if err != nil {
+		return
+	}
+
 	cards := pbc.CardList{}
 
 	log.Printf("CURRENT Card: %v", foundCard)
