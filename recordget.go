@@ -30,6 +30,41 @@ const (
 	wait = 5 * time.Second
 )
 
+func (s *Server) getRelease(ctx context.Context, id int32) (*pbd.Release, error) {
+	host, port := s.GetIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := pb.NewDiscogsServiceClient(conn)
+
+	return client.GetSingleRelease(ctx, &pbd.Release{Id: id})
+}
+
+func (s *Server) saveRelease(ctx context.Context, in *pbd.Release) (*pb.Empty, error) {
+	host, port := s.GetIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := pb.NewDiscogsServiceClient(conn)
+
+	return client.UpdateRating(ctx, in)
+}
+
+func (s *Server) moveReleaseToListeningBox(ctx context.Context, in *pbd.Release) (*pb.Empty, error) {
+	host, port := s.GetIP("discogssyncer")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := pb.NewDiscogsServiceClient(conn)
+	return client.MoveToFolder(ctx, &pb.ReleaseMove{Release: in, NewFolderId: 673768})
+}
+
 func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("discogssyncer")

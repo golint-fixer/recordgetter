@@ -8,4 +8,5 @@ message Empty {}
 
 service RecordGetter {
   rpc GetRecord(Empty) returns (godiscogs.Release);
+  rpc Listened(godiscogs.Release) returns (godiscogs.Release);
 }
