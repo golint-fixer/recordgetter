@@ -16,6 +16,7 @@ import (
 	pbc "github.com/brotherlogic/cardserver/card"
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
+	pbg "github.com/brotherlogic/goserver/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 )
 
@@ -191,15 +192,17 @@ func (s *Server) scoreCard(releaseID int, rating int) bool {
 func (s *Server) hasCurrentCard() bool {
 	//Get the latest card from the cardserver
 	cServer, cPort := s.GetIP("cardserver")
-	conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
-	defer conn.Close()
-	client := pbc.NewCardServiceClient(conn)
+	if cPort > 0 {
+		conn, _ := grpc.Dial(cServer+":"+strconv.Itoa(cPort), grpc.WithInsecure())
+		defer conn.Close()
+		client := pbc.NewCardServiceClient(conn)
 
-	cardList, _ := client.GetCards(context.Background(), &pbc.Empty{})
+		cardList, _ := client.GetCards(context.Background(), &pbc.Empty{})
 
-	for _, card := range cardList.Cards {
-		if card.Hash == "discogs" {
-			return true
+		for _, card := range cardList.Cards {
+			if card.Hash == "discogs" {
+				return true
+			}
 		}
 	}
 	return false
@@ -334,6 +337,11 @@ func (s Server) ReportHealth() bool {
 func (s Server) Mote(master bool) error {
 	s.delivering = master
 	return nil
+}
+
+// GetState gets the state of the server
+func (s Server) GetState() []*pbg.State {
+	return []*pbg.State{}
 }
 
 func main() {
