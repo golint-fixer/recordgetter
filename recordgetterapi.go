@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"golang.org/x/net/context"
 
 	pbd "github.com/brotherlogic/godiscogs"
@@ -9,10 +11,21 @@ import (
 
 //GetRecord gets a record
 func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, error) {
+	t := time.Now()
+	if s.state.CurrentPick != nil {
+		s.LogFunction("GetRecord-cache", t)
+		return s.state.CurrentPick, nil
+	}
+
 	rel, _ := s.getReleaseFromPile("ListeningPile")
 	if rel == nil {
 		rel, _ = s.getReleaseFromCollection(true)
 	}
+
+	s.state.CurrentPick = rel
+	s.saveState()
+
+	s.LogFunction("GetRecord", t)
 	return rel, nil
 }
 

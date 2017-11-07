@@ -6,6 +6,10 @@ import "github.com/brotherlogic/godiscogs/godiscogs.proto";
 
 message Empty {}
 
+message State {
+  godiscogs.Release current_pick = 1;
+}
+
 service RecordGetter {
   rpc GetRecord(Empty) returns (godiscogs.Release);
   rpc Listened(godiscogs.Release) returns (godiscogs.Release);
