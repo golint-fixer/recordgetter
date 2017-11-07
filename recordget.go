@@ -25,13 +25,18 @@ type Server struct {
 	*goserver.GoServer
 	serving    bool
 	delivering bool
+	state      *pbrg.State
 }
 
 const (
 	wait = 5 * time.Second
+
+	//KEY under which we store the collection
+	KEY = "/github.com/brotherlogic/recordgetter/state"
 )
 
 func (s *Server) getRelease(ctx context.Context, id int32) (*pbd.Release, error) {
+	t := time.Now()
 	host, port := s.GetIP("discogssyncer")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
@@ -40,6 +45,7 @@ func (s *Server) getRelease(ctx context.Context, id int32) (*pbd.Release, error)
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 
+	s.LogFunction("GetRelease", t)
 	return client.GetSingleRelease(ctx, &pbd.Release{Id: id})
 }
 
@@ -336,12 +342,35 @@ func (s Server) ReportHealth() bool {
 // Mote promotes/demotes this server
 func (s Server) Mote(master bool) error {
 	s.delivering = master
+
+	if master {
+		return s.readState()
+	}
+
 	return nil
 }
 
 // GetState gets the state of the server
 func (s Server) GetState() []*pbg.State {
 	return []*pbg.State{}
+}
+
+// This is the only method that interacts with disk
+func (s *Server) readState() error {
+	state := &pbrg.State{}
+	data, err := s.KSclient.Read(KEY, state)
+
+	if err != nil {
+		return err
+	}
+
+	s.state = data.(*pbrg.State)
+
+	return nil
+}
+
+func (s *Server) saveState() {
+	s.KSclient.Save(KEY, s.state)
 }
 
 func main() {
