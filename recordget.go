@@ -365,8 +365,9 @@ func (s *Server) readState() error {
 		return err
 	}
 
-	s.state = data.(*pbrg.State)
-
+	if data != nil {
+		s.state = data.(*pbrg.State)
+	}
 	return nil
 }
 
