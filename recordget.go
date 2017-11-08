@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/brotherlogic/goserver"
+	"github.com/brotherlogic/keystore/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -386,6 +387,7 @@ func main() {
 	}
 
 	server.PrepServer()
+	server.GoServer.KSclient = *keystoreclient.GetClient(server.GetIP)
 	server.RegisterServer("recordgetter", false)
 	server.RegisterServingTask(server.GetRecords)
 	server.Serve()
