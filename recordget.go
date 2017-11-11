@@ -355,9 +355,7 @@ func (s *Server) Mote(master bool) error {
 	s.delivering = master
 
 	if master {
-		log.Printf("READING STATE")
-		s.readState()
-		log.Printf("WHA %v", s)
+		return s.readState()
 	}
 
 	return nil
