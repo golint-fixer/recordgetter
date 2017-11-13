@@ -86,27 +86,23 @@ func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.Releas
 	r, err := client.GetReleasesInFolder(context.Background(), folderList)
 	log.Printf("DONE: %v", err)
 
-	if len(r.Releases) == 0 {
+	if len(r.Records) == 0 {
 		return nil, nil
 	}
 
 	var newRel *pbd.Release
 	newRel = nil
 	pDate := int64(math.MaxInt64)
-	log.Printf("RELEASES %v", len(r.Releases))
-	for i, rel := range r.Releases {
+	for i, rel := range r.Records {
 		log.Printf("GETTING %v", i)
-		meta, err2 := client.GetMetadata(context.Background(), rel)
-		if err2 == nil {
-			if meta.DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) && meta.DateAdded < pDate {
-				newRel = rel
-				pDate = meta.DateAdded
-			}
+		if rel.GetMetadata().DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) && rel.GetMetadata().DateAdded < pDate {
+			newRel = rel.GetRelease()
+			pDate = rel.GetMetadata().DateAdded
 		}
 	}
 
 	if newRel == nil {
-		newRel = r.Releases[rand.Intn(len(r.Releases))]
+		newRel = r.Records[rand.Intn(len(r.Records))].GetRelease()
 	}
 	log.Printf("DONE META")
 	meta, _ := client.GetMetadata(context.Background(), newRel)
@@ -140,7 +136,7 @@ func (s *Server) getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.Re
 	}
 	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
-	retRel := r.Releases[rand.Intn(len(r.Releases))]
+	retRel := r.Records[rand.Intn(len(r.Records))].GetRelease()
 	meta, _ := client.GetMetadata(context.Background(), retRel)
 
 	return retRel, meta
@@ -158,9 +154,9 @@ func (s *Server) getReleaseWithID(folderName string, id int) *pbd.Release {
 	folderList.Folders = append(folderList.Folders, folder)
 	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
-	for _, release := range r.Releases {
-		if int(release.Id) == id {
-			return release
+	for _, release := range r.Records {
+		if int(release.GetRelease().Id) == id {
+			return release.GetRelease()
 		}
 	}
 	return nil
