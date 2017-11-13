@@ -369,7 +369,7 @@ func (s Server) GetState() []*pbg.State {
 // This is the only method that interacts with disk
 func (s *Server) readState() error {
 	state := &pbrg.State{}
-	data, err := s.KSclient.Read(KEY, state)
+	data, _, err := s.KSclient.Read(KEY, state)
 
 	log.Printf("ERROR HERE: %v but %v", err, data)
 
