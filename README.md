@@ -1,0 +1,1 @@
+Gets a record to listen to.
