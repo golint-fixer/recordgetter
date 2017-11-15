@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -382,7 +381,6 @@ func (s *Server) readState() error {
 
 	log.Printf("NOW %v", s.state)
 
-	s.Log(fmt.Sprintf("Successful Mote: %v", s.state))
 	return nil
 }
 

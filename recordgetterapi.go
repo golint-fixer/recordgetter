@@ -23,7 +23,6 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, err
 	}
 
 	log.Fatalf("Trying to pull release")
-	s.Log(fmt.Sprintf("Pulling Release: %v", s.state))
 
 	log.Printf("GETTING RELEASE")
 	rel, _ := s.getReleaseFromPile("ListeningPile")
@@ -46,6 +45,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, err
 //Listened marks a record as Listened
 func (s *Server) Listened(ctx context.Context, in *pbd.Release) (*pbd.Release, error) {
 	rel, err := s.getRelease(ctx, in.Id)
+	s.Log(fmt.Sprintf("Marking as listened: %v", rel))
 	if err != nil {
 		return nil, err
 	}
