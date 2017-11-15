@@ -332,14 +332,14 @@ func (s Server) runSingle() {
 //Init a record getter
 func Init() *Server {
 	s := &Server{GoServer: &goserver.GoServer{}, serving: true, delivering: true, state: &pbrg.State{}}
-	s.PrepServer()
 	s.Register = s
+	s.PrepServer()
 	return s
 }
 
 // DoRegister does RPC registration
-func (s Server) DoRegister(server *grpc.Server) {
-	pbrg.RegisterRecordGetterServer(server, &s)
+func (s *Server) DoRegister(server *grpc.Server) {
+	pbrg.RegisterRecordGetterServer(server, s)
 }
 
 // ReportHealth alerts if we're not healthy
@@ -349,6 +349,7 @@ func (s Server) ReportHealth() bool {
 
 // Mote promotes/demotes this server
 func (s *Server) Mote(master bool) error {
+	log.Printf("MOTING %v %p -> %p", s.state, &s, s.GoServer)
 	s.delivering = master
 
 	if master {
@@ -375,10 +376,11 @@ func (s *Server) readState() error {
 	}
 
 	if data != nil {
+		log.Printf("Setting state")
 		s.state = data.(*pbrg.State)
 	}
 
-	log.Printf("NOW %v", s)
+	log.Printf("NOW %v", s.state)
 
 	s.Log(fmt.Sprintf("Successful Mote: %v", s.state))
 	return nil
@@ -403,7 +405,8 @@ func main() {
 
 	server.GoServer.KSclient = *keystoreclient.GetClient(server.GetIP)
 	server.RegisterServer("recordgetter", false)
-	server.RegisterServingTask(server.GetRecords)
+	//server.RegisterServingTask(server.GetRecords)
 	server.Log("Starting!")
+	log.Printf("SERVING FROM %p", server)
 	server.Serve()
 }

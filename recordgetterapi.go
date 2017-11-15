@@ -13,6 +13,7 @@ import (
 
 //GetRecord gets a record
 func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, error) {
+	log.Printf("GETTING %v %p but %p and %p", s.state, s, s.Register, s.GoServer)
 	t := time.Now()
 	log.Printf("HERE %v and %v", s, s.state)
 	if s.state.CurrentPick != nil {
@@ -21,6 +22,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, err
 		return s.state.CurrentPick, nil
 	}
 
+	log.Fatalf("Trying to pull release")
 	s.Log(fmt.Sprintf("Pulling Release: %v", s.state))
 
 	log.Printf("GETTING RELEASE")
