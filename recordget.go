@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -379,6 +380,7 @@ func (s *Server) readState() error {
 
 	log.Printf("NOW %v", s)
 
+	s.Log(fmt.Sprintf("Successful Mote: %v", s.state))
 	return nil
 }
 
@@ -402,5 +404,6 @@ func main() {
 	server.GoServer.KSclient = *keystoreclient.GetClient(server.GetIP)
 	server.RegisterServer("recordgetter", false)
 	server.RegisterServingTask(server.GetRecords)
+	server.Log("Starting!")
 	server.Serve()
 }

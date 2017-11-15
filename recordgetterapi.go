@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -19,6 +20,8 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbd.Release, err
 		log.Printf("HUH")
 		return s.state.CurrentPick, nil
 	}
+
+	s.Log(fmt.Sprintf("Pulling Release: %v", s.state))
 
 	log.Printf("GETTING RELEASE")
 	rel, _ := s.getReleaseFromPile("ListeningPile")
