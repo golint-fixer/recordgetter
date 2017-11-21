@@ -405,6 +405,6 @@ func main() {
 	server.RegisterServer("recordgetter", false)
 	//server.RegisterServingTask(server.GetRecords)
 	server.Log("Starting!")
-	log.Printf("SERVING FROM %p", server)
+	log.Printf("SERVING FROM %v", server)
 	server.Serve()
 }
