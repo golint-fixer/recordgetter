@@ -82,9 +82,7 @@ func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.Releas
 	folderList := &pb.FolderList{}
 	folder := &pbd.Folder{Name: folderName}
 	folderList.Folders = append(folderList.Folders, folder)
-	log.Printf("CALLING")
-	r, err := client.GetReleasesInFolder(context.Background(), folderList)
-	log.Printf("DONE: %v", err)
+	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
 
 	if len(r.Records) == 0 {
 		return nil, nil
@@ -93,8 +91,7 @@ func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.Releas
 	var newRel *pbd.Release
 	newRel = nil
 	pDate := int64(math.MaxInt64)
-	for i, rel := range r.Records {
-		log.Printf("GETTING %v", i)
+	for _, rel := range r.Records {
 		if rel.GetMetadata().DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) && rel.GetMetadata().DateAdded < pDate {
 			newRel = rel.GetRelease()
 			pDate = rel.GetMetadata().DateAdded
@@ -104,9 +101,7 @@ func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.Releas
 	if newRel == nil {
 		newRel = r.Records[rand.Intn(len(r.Records))].GetRelease()
 	}
-	log.Printf("DONE META")
 	meta, _ := client.GetMetadata(context.Background(), newRel)
-	log.Printf("DONE META DONE")
 	return newRel, meta
 }
 
@@ -207,7 +202,6 @@ func (s *Server) hasCurrentCard() bool {
 		client := pbc.NewCardServiceClient(conn)
 
 		cardList, err := client.GetCards(context.Background(), &pbc.Empty{})
-		log.Printf("ERR: %v", err)
 
 		if err == nil {
 			for _, card := range cardList.Cards {
@@ -348,7 +342,6 @@ func (s Server) ReportHealth() bool {
 
 // Mote promotes/demotes this server
 func (s *Server) Mote(master bool) error {
-	log.Printf("MOTING %v %p -> %p", s.state, &s, s.GoServer)
 	s.delivering = master
 
 	if master {
@@ -368,25 +361,19 @@ func (s *Server) readState() error {
 	state := &pbrg.State{}
 	data, _, err := s.KSclient.Read(KEY, state)
 
-	log.Printf("ERROR HERE: %v but %v", err, data)
-
 	if err != nil {
 		return err
 	}
 
 	if data != nil {
-		log.Printf("Setting state")
 		s.state = data.(*pbrg.State)
 	}
-
-	log.Printf("NOW %v", s.state)
 
 	return nil
 }
 
 func (s *Server) saveState() {
 	s.KSclient.Save(KEY, s.state)
-	log.Printf("SAVED %v", s.state)
 }
 
 func main() {
@@ -405,6 +392,5 @@ func main() {
 	server.RegisterServer("recordgetter", false)
 	//server.RegisterServingTask(server.GetRecords)
 	server.Log("Starting!")
-	log.Printf("SERVING FROM %v", server)
 	server.Serve()
 }
