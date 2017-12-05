@@ -13,4 +13,5 @@ message State {
 service RecordGetter {
   rpc GetRecord(Empty) returns (godiscogs.Release);
   rpc Listened(godiscogs.Release) returns (godiscogs.Release);
+  rpc Force(Empty) returns (Empty);
 }

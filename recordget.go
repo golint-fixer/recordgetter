@@ -271,7 +271,7 @@ func getCard(rel *pbd.Release) pbc.Card {
 		imageURL = backupURL
 	}
 
-	card := pbc.Card{Text: pbd.GetReleaseArtist(*rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Priority: 100}
+	card := pbc.Card{Text: pbd.GetReleaseArtist(rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Priority: 100}
 	return card
 }
 

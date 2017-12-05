@@ -46,3 +46,10 @@ func (s *Server) Listened(ctx context.Context, in *pbd.Release) (*pbd.Release, e
 
 	return s.GetRecord(ctx, &pb.Empty{})
 }
+
+//Force forces a repick
+func (s *Server) Force(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	s.state.CurrentPick = nil
+	s.saveState()
+	return &pb.Empty{}, nil
+}
