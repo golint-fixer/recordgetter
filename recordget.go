@@ -18,6 +18,7 @@ import (
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
 	pbg "github.com/brotherlogic/goserver/proto"
+	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 )
 
@@ -73,36 +74,39 @@ func (s *Server) moveReleaseToListeningBox(ctx context.Context, in *pbd.Release)
 	return client.MoveToFolder(ctx, &pb.ReleaseMove{Release: in, NewFolderId: 673768})
 }
 
-func (s *Server) getReleaseFromPile(folderName string) (*pbd.Release, *pb.ReleaseMetadata) {
+func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	host, port := s.GetIP("discogssyncer")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port := s.GetIP("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
-	client := pb.NewDiscogsServiceClient(conn)
-	folderList := &pb.FolderList{}
-	folder := &pbd.Folder{Name: folderName}
-	folderList.Folders = append(folderList.Folders, folder)
-	r, _ := client.GetReleasesInFolder(context.Background(), folderList)
+	client := pbrc.NewRecordCollectionServiceClient(conn)
+	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}})
+	if err != nil {
+		return nil, err
+	}
 
-	if len(r.Records) == 0 {
+	if len(r.GetRecords()) == 0 {
 		return nil, nil
 	}
 
-	var newRel *pbd.Release
-	newRel = nil
+	var newRec *pbrc.Record
+	newRec = nil
 	pDate := int64(math.MaxInt64)
-	for _, rel := range r.Records {
-		if rel.GetMetadata().DateAdded > (time.Now().AddDate(0, -3, 0).Unix()) && rel.GetMetadata().DateAdded < pDate {
-			newRel = rel.GetRelease()
-			pDate = rel.GetMetadata().DateAdded
+	for _, rc := range r.GetRecords() {
+		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate {
+			pDate = rc.GetMetadata().DateAdded
+			newRec = rc
 		}
 	}
 
-	if newRel == nil {
-		newRel = r.Records[rand.Intn(len(r.Records))].GetRelease()
+	if newRec == nil {
+		newRec = r.Records[rand.Intn(len(r.Records))]
 	}
-	meta, _ := client.GetMetadata(context.Background(), newRel)
-	return newRel, meta
+
+	return newRec, nil
 }
 
 func (s *Server) getReleaseFromCollection(allowSeven bool) (*pbd.Release, *pb.ReleaseMetadata) {
@@ -273,53 +277,6 @@ func getCard(rel *pbd.Release) pbc.Card {
 
 	card := pbc.Card{Text: pbd.GetReleaseArtist(rel) + " - " + rel.Title, Hash: "discogs", Image: imageURL, Priority: 100}
 	return card
-}
-
-// GetRecords runs the get records loop
-func (s Server) GetRecords() {
-	for s.serving {
-		time.Sleep(wait)
-		s.runSingle()
-	}
-}
-
-func (s Server) runSingle() {
-	foundCard := s.hasCurrentCard()
-	allowSeven, err := s.processCard()
-
-	if err != nil {
-		return
-	}
-
-	cards := pbc.CardList{}
-
-	if !foundCard {
-		rel, meta := s.getReleaseFromPile("ListeningPile")
-
-		if rel != nil {
-			card := getCard(rel)
-			card.Result = &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
-			card.Action = pbc.Card_RATE
-			addTime := time.Unix(meta.DateAdded, 0)
-			if time.Now().Sub(addTime).Hours() < 24*30*3 {
-				card.Action = pbc.Card_DISMISS
-			}
-			cards.Cards = append(cards.Cards, &card)
-		} else {
-			rel, _ := s.getReleaseFromCollection(allowSeven)
-			card := getCard(rel)
-			card.Action = pbc.Card_DISMISS
-			if rel.Rating <= 0 {
-				card.Result = &pbc.Card{Hash: "discogs-process", Priority: -10, Text: strconv.Itoa(int(rel.Id))}
-				card.Action = pbc.Card_RATE
-			}
-			cards.Cards = append(cards.Cards, &card)
-		}
-	}
-
-	if s.delivering {
-		s.addCards(&cards)
-	}
 }
 
 //Init a record getter
