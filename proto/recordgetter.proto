@@ -2,16 +2,16 @@ syntax = "proto3";
 
 package recordgetter;
 
-import "github.com/brotherlogic/godiscogs/godiscogs.proto";
+import "github.com/brotherlogic/recordcollection/proto/recordcollection.proto";
 
 message Empty {}
 
 message State {
-  godiscogs.Release current_pick = 1;
+  recordcollection.Record current_pick = 1;
 }
 
 service RecordGetter {
-  rpc GetRecord(Empty) returns (godiscogs.Release);
-  rpc Listened(godiscogs.Release) returns (godiscogs.Release);
+  rpc GetRecord(Empty) returns (recordcollection.Record);
+  rpc Listened(recordcollection.Record) returns (recordcollection.Record);
   rpc Force(Empty) returns (Empty);
 }
