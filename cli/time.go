@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 	pbdi "github.com/brotherlogic/discovery/proto"
 	pbd "github.com/brotherlogic/godiscogs"
 	"github.com/brotherlogic/goserver/utils"
+	pbrg "github.com/brotherlogic/recordgetter/proto"
 )
 
 func findServer(name string) (string, int) {
@@ -42,6 +44,24 @@ func findServer(name string) (string, int) {
 	return r.Ip, int(r.Port)
 }
 
+func clear() {
+	host, port := findServer("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	defer conn.Close()
+	client := pbrg.NewRecordGetterClient(conn)
+	r, err := client.Force(context.Background(), &pbrg.Empty{})
+	fmt.Printf("%v and %v", r, err)
+}
+
+func get() {
+	host, port := findServer("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	defer conn.Close()
+	client := pbrg.NewRecordGetterClient(conn)
+	r, err := client.GetRecord(context.Background(), &pbrg.Empty{})
+	fmt.Printf("%v and %v", r, err)
+}
+
 func run() (int, error) {
 	host, port := findServer("discogssyncer")
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -59,7 +79,5 @@ func run() (int, error) {
 }
 
 func main() {
-	t := time.Now()
-	val, err := run()
-	log.Printf("Ran: %v in %v -> %v", val, time.Now().Sub(t), err)
+	get()
 }
