@@ -368,7 +368,10 @@ func (s *Server) readState() error {
 	if data != nil {
 		s.state = data.(*pbrg.State)
 	}
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 	return nil
 }
 
