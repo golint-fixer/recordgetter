@@ -37,18 +37,16 @@ const (
 	KEY = "/github.com/brotherlogic/recordgetter/state"
 )
 
-func (s *Server) getRelease(ctx context.Context, id int32) (*pbd.Release, error) {
-	t := time.Now()
-	host, port := s.GetIP("discogssyncer")
+func (s *Server) getRelease(ctx context.Context, instance int32) (*pbrc.GetRecordsResponse, error) {
+	host, port := s.GetIP("recordcollection")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	client := pb.NewDiscogsServiceClient(conn)
+	client := pbrc.NewRecordCollectionServiceClient(conn)
 
-	s.LogFunction("GetRelease", t)
-	return client.GetSingleRelease(ctx, &pbd.Release{Id: id})
+	return client.GetRecords(ctx, &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Release: &pbd.Release{InstanceId: instance}}})
 }
 
 func (s *Server) saveRelease(ctx context.Context, in *pbd.Release) (*pb.Empty, error) {
@@ -325,10 +323,7 @@ func (s *Server) readState() error {
 	if data != nil {
 		s.state = data.(*pbrg.State)
 	}
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 	return nil
 }
 

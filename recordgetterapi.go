@@ -11,7 +11,7 @@ import (
 )
 
 //GetRecord gets a record
-func (s *Server) GetRecord(ctx context.Context, in *pb.Empty) (*pbrc.Record, error) {
+func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.Record, error) {
 	t := time.Now()
 	if s.state.CurrentPick != nil {
 

@@ -58,7 +58,7 @@ func get() {
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
-	r, err := client.GetRecord(context.Background(), &pbrg.Empty{})
+	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
 	fmt.Printf("%v and %v", r, err)
 }
 
@@ -79,5 +79,5 @@ func run() (int, error) {
 }
 
 func main() {
-	get()
+	clear()
 }
