@@ -83,7 +83,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	}
 	defer conn.Close()
 	client := pbrc.NewRecordCollectionServiceClient(conn)
-	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}})
+	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Force: true, Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}})
 	if err != nil {
 		return nil, err
 	}
