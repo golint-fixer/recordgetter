@@ -72,6 +72,22 @@ func (s *Server) moveReleaseToListeningBox(ctx context.Context, in *pbd.Release)
 	return client.MoveToFolder(ctx, &pb.ReleaseMove{Release: in, NewFolderId: 673768})
 }
 
+func (s *Server) update(rec *pbrc.Record) error {
+	host, port := s.GetIP("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := pbrc.NewRecordCollectionServiceClient(conn)
+	_, err = client.UpdateRecord(context.Background(), &pbrc.UpdateRecordRequest{Update: rec})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("recordcollection")
