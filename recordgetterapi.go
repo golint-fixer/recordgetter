@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"time"
 
 	"golang.org/x/net/context"
@@ -40,7 +39,9 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.
 
 //Listened marks a record as Listened
 func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pbrc.Record, error) {
-	return nil, errors.New("UNIMPLEMENTED")
+	s.update(in)
+	s.state.CurrentPick = nil
+	return s.GetRecord(ctx, &pb.GetRecordRequest{})
 }
 
 //Force forces a repick
