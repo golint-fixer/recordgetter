@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"time"
 
@@ -17,6 +16,8 @@ import (
 	pbd "github.com/brotherlogic/godiscogs"
 	"github.com/brotherlogic/goserver/utils"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
+//Needed to pull in gzip encoding init	
+	 _ "google.golang.org/grpc/encoding/gzip"
 )
 
 func findServer(name string) (string, int) {
@@ -94,9 +95,10 @@ func run() (int, error) {
 }
 
 func main() {
-	val, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	listened(int32(val))
+	//val, err := strconv.Atoi(os.Args[1])
+	//if err != nil {
+	//	log.Fatalf("%v", err)
+	//}
+	// listened(int32(val))
+	get()
 }
