@@ -72,6 +72,22 @@ func (s *Server) moveReleaseToListeningBox(ctx context.Context, in *pbd.Release)
 	return client.MoveToFolder(ctx, &pb.ReleaseMove{Release: in, NewFolderId: 673768})
 }
 
+func (s *Server) update(rec *pbrc.Record) error {
+	host, port := s.GetIP("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := pbrc.NewRecordCollectionServiceClient(conn)
+	_, err = client.UpdateRecord(context.Background(), &pbrc.UpdateRecordRequest{Update: rec})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("recordcollection")
@@ -94,14 +110,18 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	newRec = nil
 	pDate := int64(math.MaxInt64)
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate {
+		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 {
 			pDate = rc.GetMetadata().DateAdded
 			newRec = rc
 		}
 	}
 
 	if newRec == nil {
-		newRec = r.Records[rand.Intn(len(r.Records))]
+		for _, v := range rand.Perm(len(r.Records)) {
+			if r.Records[v].GetRelease().Rating <= 0 {
+				newRec = r.Records[v]
+			}
+		}
 	}
 
 	return newRec, nil

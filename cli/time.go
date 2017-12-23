@@ -57,6 +57,20 @@ func clear() {
 	fmt.Printf("%v and %v", r, err)
 }
 
+func listened(score int32) {
+	host, port := findServer("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	defer conn.Close()
+	client := pbrg.NewRecordGetterClient(conn)
+	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	r.GetRelease().Rating = score
+	_, err = client.Listened(context.Background(), r)
+	fmt.Printf("%v", err)
+}
+
 func get() {
 	host, port := findServer("recordgetter")
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
