@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 	pbd "github.com/brotherlogic/godiscogs"
 	"github.com/brotherlogic/goserver/utils"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
+
+	//Needed to pull in gzip encoding init
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 func findServer(name string) (string, int) {
@@ -62,6 +66,20 @@ func get() {
 	fmt.Printf("%v and %v", r, err)
 }
 
+func score(value int32) {
+	host, port := findServer("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	defer conn.Close()
+	client := pbrg.NewRecordGetterClient(conn)
+	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
+	if err != nil {
+		log.Fatalf("Error in scoring: %v", err)
+	}
+	r.GetRelease().Rating = value
+	re, err := client.Listened(context.Background(), r)
+	fmt.Printf("%v and %v", re, err)
+}
+
 func run() (int, error) {
 	host, port := findServer("discogssyncer")
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -79,5 +97,9 @@ func run() (int, error) {
 }
 
 func main() {
-	clear()
+	val, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatalf("Error parsing num: %v", err)
+	}
+	score(int32(val))
 }
