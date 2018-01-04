@@ -96,16 +96,19 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 		return nil, err
 	}
 	defer conn.Close()
+	t := time.Now()
 	client := pbrc.NewRecordCollectionServiceClient(conn)
 	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Force: true, Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}})
 	if err != nil {
 		return nil, err
 	}
+	s.LogFunction("getReleaseFromPile-getRecords", t)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, nil
 	}
 
+	t = time.Now()
 	var newRec *pbrc.Record
 	newRec = nil
 	pDate := int64(math.MaxInt64)
@@ -115,7 +118,9 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 			newRec = rc
 		}
 	}
+	s.LogFunction("getReleaseFromPile-find", t)
 
+	t = time.Now()
 	if newRec == nil {
 		for _, v := range rand.Perm(len(r.Records)) {
 			if r.Records[v].GetRelease().Rating <= 0 {
@@ -123,6 +128,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 			}
 		}
 	}
+	s.LogFunction("getReleaseFromPile-new", t)
 
 	return newRec, nil
 }
