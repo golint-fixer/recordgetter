@@ -19,7 +19,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.
 		if in.GetRefresh() {
 			rec, err := s.getRelease(ctx, s.state.CurrentPick.Release.InstanceId)
 			s.Log(fmt.Sprintf("GOT %v and %v", rec, err))
-			if err != nil && len(rec.GetRecords()) == 1 {
+			if err == nil && len(rec.GetRecords()) == 1 {
 				s.state.CurrentPick = rec.GetRecords()[0]
 			}
 		}

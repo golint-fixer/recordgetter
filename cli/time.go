@@ -76,7 +76,7 @@ func get() {
 	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
-	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
+	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{Refresh: true})
 	fmt.Printf("%v and %v", r, err)
 }
 
@@ -111,8 +111,8 @@ func run() (int, error) {
 }
 
 func main() {
-	clear()
-	log.Fatalf("Done")
+     get()
+     
 	val, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		log.Fatalf("Error parsing num: %v", err)
