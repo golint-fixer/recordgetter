@@ -111,7 +111,7 @@ func run() (int, error) {
 }
 
 func main() {
-     get()
+     clear()
      
 	val, err := strconv.Atoi(os.Args[1])
 	if err != nil {

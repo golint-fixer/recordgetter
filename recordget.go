@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -102,7 +103,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.LogFunction("getReleaseFromPile-getRecords", t)
+	s.LogFunction(fmt.Sprintf("getReleaseFromPile-getRecords-%v", len(r.GetRecords())), t)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, nil
