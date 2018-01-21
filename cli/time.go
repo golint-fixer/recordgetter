@@ -111,8 +111,7 @@ func run() (int, error) {
 }
 
 func main() {
-     clear()
-     
+	get()
 	val, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		log.Fatalf("Error parsing num: %v", err)
