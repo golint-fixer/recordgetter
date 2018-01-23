@@ -14,8 +14,13 @@ message GetRecordRequest {
   bool refresh = 1;
 }
 
+message GetRecordResponse {
+  recordcollection.Record record = 1;
+  int32 num_listens = 2;
+}
+
 service RecordGetter {
-  rpc GetRecord(GetRecordRequest) returns (recordcollection.Record);
-  rpc Listened(recordcollection.Record) returns (recordcollection.Record);
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+  rpc Listened(recordcollection.Record) returns (Empty);
   rpc Force(Empty) returns (Empty);
 }
