@@ -66,8 +66,8 @@ func listened(score int32) {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	r.GetRelease().Rating = score
-	_, err = client.Listened(context.Background(), r)
+	r.GetRecord().GetRelease().Rating = score
+	_, err = client.Listened(context.Background(), r.GetRecord())
 	fmt.Printf("%v", err)
 }
 
@@ -89,8 +89,8 @@ func score(value int32) {
 	if err != nil {
 		log.Fatalf("Error in scoring: %v", err)
 	}
-	r.GetRelease().Rating = value
-	re, err := client.Listened(context.Background(), r)
+	r.GetRecord().GetRelease().Rating = value
+	re, err := client.Listened(context.Background(), r.GetRecord())
 	fmt.Printf("%v and %v", re, err)
 }
 

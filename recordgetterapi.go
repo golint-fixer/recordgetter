@@ -11,7 +11,7 @@ import (
 )
 
 //GetRecord gets a record
-func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.Record, error) {
+func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.GetRecordResponse, error) {
 	t := time.Now()
 	if s.state.CurrentPick != nil {
 
@@ -25,7 +25,8 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.
 		}
 
 		s.LogFunction("GetRecord-cache", t)
-		return s.state.CurrentPick, nil
+
+		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick)}, nil
 	}
 
 	rec, err := s.getReleaseFromPile()
@@ -37,14 +38,15 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pbrc.
 	s.saveState()
 
 	s.LogFunction("GetRecord", t)
-	return rec, nil
+	return &pb.GetRecordResponse{Record: rec, NumListens: getNumListens(rec)}, nil
 }
 
 //Listened marks a record as Listened
-func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pbrc.Record, error) {
+func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pb.Empty, error) {
 	s.update(in)
 	s.state.CurrentPick = nil
-	return s.GetRecord(ctx, &pb.GetRecordRequest{})
+	s.saveState()
+	return &pb.Empty{}, nil
 }
 
 //Force forces a repick
