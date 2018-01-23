@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -98,11 +99,11 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	defer conn.Close()
 	t := time.Now()
 	client := pbrc.NewRecordCollectionServiceClient(conn)
-	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Force: true, Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}})
+	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Force: true, Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 	if err != nil {
 		return nil, err
 	}
-	s.LogFunction("getReleaseFromPile-getRecords", t)
+	s.LogFunction(fmt.Sprintf("getReleaseFromPile-getRecords-%v", len(r.GetRecords())), t)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, nil
