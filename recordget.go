@@ -116,7 +116,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	newRec = nil
 	pDate := int64(math.MaxInt64)
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 {
+		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
 			pDate = rc.GetMetadata().DateAdded
 			newRec = rc
 		}
