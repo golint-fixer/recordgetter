@@ -89,7 +89,7 @@ func score(value int32) {
 	if err != nil {
 		log.Fatalf("Error in scoring: %v", err)
 	}
-	r.GetRecord().GetRelease().Rating = value
+	r.GetRecord().GetMetadata().SetRating = value
 	re, err := client.Listened(context.Background(), r.GetRecord())
 	fmt.Printf("%v and %v", re, err)
 }
