@@ -101,7 +101,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	client := pbrc.NewRecordCollectionServiceClient(conn)
 
 	//Only get clean records
-	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Force: true, Filter: &pbrc.Record{Metadata: &pbrc.ReleaseMetadata{Dirty: false}, Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
+	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Metadata: &pbrc.ReleaseMetadata{Dirty: false}, Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 	if err != nil {
 		return nil, err
 	}
