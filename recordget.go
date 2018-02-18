@@ -123,16 +123,6 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	}
 	s.LogFunction("getReleaseFromPile-find", t)
 
-	t = time.Now()
-	if newRec == nil {
-		for _, v := range rand.Perm(len(r.Records)) {
-			if r.Records[v].GetRelease().Rating <= 0 {
-				newRec = r.Records[v]
-			}
-		}
-	}
-	s.LogFunction("getReleaseFromPile-new", t)
-
 	return newRec, nil
 }
 
