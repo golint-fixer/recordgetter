@@ -116,22 +116,12 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	newRec = nil
 	pDate := int64(math.MaxInt64)
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().GetDateAdded() > (time.Now().AddDate(0, -3, 0).Unix()) && rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
+		if rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
 			pDate = rc.GetMetadata().DateAdded
 			newRec = rc
 		}
 	}
 	s.LogFunction("getReleaseFromPile-find", t)
-
-	t = time.Now()
-	if newRec == nil {
-		for _, v := range rand.Perm(len(r.Records)) {
-			if r.Records[v].GetRelease().Rating <= 0 {
-				newRec = r.Records[v]
-			}
-		}
-	}
-	s.LogFunction("getReleaseFromPile-new", t)
 
 	return newRec, nil
 }

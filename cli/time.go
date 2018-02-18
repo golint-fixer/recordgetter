@@ -6,14 +6,10 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	pb "github.com/brotherlogic/discogssyncer/server"
-	pbdi "github.com/brotherlogic/discovery/proto"
 	pbd "github.com/brotherlogic/godiscogs"
 	"github.com/brotherlogic/goserver/utils"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
@@ -22,35 +18,9 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip"
 )
 
-func findServer(name string) (string, int) {
-	conn, err := grpc.Dial(utils.Discover, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Cannot reach discover server: %v (trying to discover %v)", err, name)
-	}
-	defer conn.Close()
-
-	registry := pbdi.NewDiscoveryServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	re := &pbdi.RegistryEntry{Name: name}
-	r, err := registry.Discover(ctx, re)
-
-	e, ok := status.FromError(err)
-	if ok && e.Code() == codes.Unavailable {
-		log.Printf("RETRY")
-		r, err = registry.Discover(ctx, re)
-	}
-
-	if err != nil {
-		return "", -1
-	}
-	return r.Ip, int(r.Port)
-}
-
 func clear() {
-	host, port := findServer("recordgetter")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port, _ := utils.Resolve("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
 	r, err := client.Force(context.Background(), &pbrg.Empty{})
@@ -58,8 +28,8 @@ func clear() {
 }
 
 func listened(score int32) {
-	host, port := findServer("recordgetter")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port, _ := utils.Resolve("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
 	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
@@ -72,8 +42,8 @@ func listened(score int32) {
 }
 
 func get() {
-	host, port := findServer("recordgetter")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port, _ := utils.Resolve("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
 	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{Refresh: true})
@@ -81,8 +51,8 @@ func get() {
 }
 
 func score(value int32) {
-	host, port := findServer("recordgetter")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port, _ := utils.Resolve("recordgetter")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	defer conn.Close()
 	client := pbrg.NewRecordGetterClient(conn)
 	r, err := client.GetRecord(context.Background(), &pbrg.GetRecordRequest{})
@@ -95,8 +65,8 @@ func score(value int32) {
 }
 
 func run() (int, error) {
-	host, port := findServer("discogssyncer")
-	conn, _ := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+	host, port, _ := utils.Resolve("discogssyncer")
+	conn, _ := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	defer conn.Close()
 	client := pb.NewDiscogsServiceClient(conn)
 	folderList := &pb.FolderList{}
