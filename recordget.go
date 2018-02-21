@@ -111,6 +111,8 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 		return nil, nil
 	}
 
+	s.Log(fmt.Sprintf("Getting FROM : %v", r.GetRecords()))
+
 	t = time.Now()
 	var newRec *pbrc.Record
 	newRec = nil
