@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"math/rand"
 	"strconv"
 	"time"
@@ -116,9 +115,9 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 	t = time.Now()
 	var newRec *pbrc.Record
 	newRec = nil
-	pDate := int64(math.MaxInt64)
+	pDate := int64(0)
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().DateAdded < pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
+		if rc.GetMetadata().DateAdded > pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
 			pDate = rc.GetMetadata().DateAdded
 			newRec = rc
 		}
