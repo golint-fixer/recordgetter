@@ -92,4 +92,5 @@ func main() {
 		log.Fatalf("Error parsing num: %v", err)
 	}
 	score(int32(val))
+	get()
 }
