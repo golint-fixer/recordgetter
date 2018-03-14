@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -88,7 +87,7 @@ func (s *Server) update(rec *pbrc.Record) error {
 	return nil
 }
 
-func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
+func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	host, port := s.GetIP("recordcollection")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -96,23 +95,20 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	t := time.Now()
 	client := pbrc.NewRecordCollectionServiceClient(conn)
 
 	//Only get clean records
+	s.LogMilestone("GetRecord", "PreGetRecords", t)
 	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Metadata: &pbrc.ReleaseMetadata{Dirty: false}, Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 	if err != nil {
 		return nil, err
 	}
-	s.LogFunction(fmt.Sprintf("getReleaseFromPile-getRecords-%v", len(r.GetRecords())), t)
+	s.LogMilestone("GetRecord", "PostGetRecords", t)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, nil
 	}
 
-	s.Log(fmt.Sprintf("Getting FROM : %v", r.GetRecords()))
-
-	t = time.Now()
 	var newRec *pbrc.Record
 	newRec = nil
 	pDate := int64(0)
@@ -122,7 +118,7 @@ func (s *Server) getReleaseFromPile() (*pbrc.Record, error) {
 			newRec = rc
 		}
 	}
-	s.LogFunction("getReleaseFromPile-find", t)
+	s.LogMilestone("GetRecord", "RecordSelected", t)
 
 	return newRec, nil
 }

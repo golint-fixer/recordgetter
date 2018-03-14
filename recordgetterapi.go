@@ -14,7 +14,6 @@ import (
 func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.GetRecordResponse, error) {
 	t := time.Now()
 	if s.state.CurrentPick != nil {
-
 		s.Log(fmt.Sprintf("Doing refresh: %v", in.GetRefresh()))
 		if in.GetRefresh() {
 			rec, err := s.getRelease(ctx, s.state.CurrentPick.Release.InstanceId)
@@ -25,11 +24,10 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 		}
 
 		s.LogFunction("GetRecord-cache", t)
-
 		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick)}, nil
 	}
 
-	rec, err := s.getReleaseFromPile()
+	rec, err := s.getReleaseFromPile(t)
 	if err != nil {
 		return nil, err
 	}
