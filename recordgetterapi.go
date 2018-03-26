@@ -21,13 +21,14 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 			if err == nil && len(rec.GetRecords()) == 1 {
 				s.state.CurrentPick = rec.GetRecords()[0]
 			}
+			s.LogMilestone("GetRecord", "Refresh", t)
 		}
-
-		s.LogFunction("GetRecord-cache", t)
+		s.LogFunction("GetRecord", t)
 		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick)}, nil
 	}
 
 	rec, err := s.getReleaseFromPile(t)
+	s.LogMilestone("GetRecord", "GetRelease", t)
 	if err != nil {
 		return nil, err
 	}
