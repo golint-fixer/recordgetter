@@ -114,7 +114,7 @@ func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 
 	//Look for a record staged to sell
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().GetCategory() == pbrc.ReleaseMetadata_STAGED_TO_SELL {
+		if rc.GetMetadata().GetCategory() == pbrc.ReleaseMetadata_STAGED_TO_SELL && rc.GetMetadata().SetRating == 0 {
 			newRec = rc
 			break
 		}
