@@ -111,11 +111,22 @@ func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 
 	var newRec *pbrc.Record
 	newRec = nil
-	pDate := int64(0)
+
+	//Look for a record staged to sell
 	for _, rc := range r.GetRecords() {
-		if rc.GetMetadata().DateAdded > pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
-			pDate = rc.GetMetadata().DateAdded
+		if rc.GetMetadata().GetCategory() == pbrc.ReleaseMetadata_STAGED_TO_SELL {
 			newRec = rc
+			break
+		}
+	}
+
+	if newRec == nil {
+		pDate := int64(0)
+		for _, rc := range r.GetRecords() {
+			if rc.GetMetadata().DateAdded > pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
+				pDate = rc.GetMetadata().DateAdded
+				newRec = rc
+			}
 		}
 	}
 	s.LogMilestone("GetRecord", "RecordSelected", t)
