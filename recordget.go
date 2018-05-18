@@ -17,6 +17,7 @@ import (
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
 	pbg "github.com/brotherlogic/goserver/proto"
+	"github.com/brotherlogic/goserver/utils"
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 )
@@ -27,6 +28,8 @@ type Server struct {
 	serving    bool
 	delivering bool
 	state      *pbrg.State
+	updater    updater
+	rGetter    getter
 }
 
 const (
@@ -35,6 +38,26 @@ const (
 	//KEY under which we store the collection
 	KEY = "/github.com/brotherlogic/recordgetter/state"
 )
+
+type getter interface {
+	getRecords() (*pbrc.GetRecordsResponse, error)
+}
+
+type prodGetter struct{}
+
+func (p *prodGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
+	host, port, _ := utils.Resolve("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := pbrc.NewRecordCollectionServiceClient(conn)
+
+	//Only get clean records
+	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Metadata: &pbrc.ReleaseMetadata{Dirty: false}, Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
+	return r, err
+}
 
 func (s *Server) getRelease(ctx context.Context, instance int32) (*pbrc.GetRecordsResponse, error) {
 	host, port := s.GetIP("recordcollection")
@@ -71,15 +94,21 @@ func (s *Server) moveReleaseToListeningBox(ctx context.Context, in *pbd.Release)
 	return client.MoveToFolder(ctx, &pb.ReleaseMove{Release: in, NewFolderId: 673768})
 }
 
-func (s *Server) update(rec *pbrc.Record) error {
-	host, port := s.GetIP("recordcollection")
-	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+type updater interface {
+	update(ctx context.Context, rec *pbrc.Record) error
+}
+
+type prodUpdater struct{}
+
+func (p *prodUpdater) update(ctx context.Context, rec *pbrc.Record) error {
+	host, port, _ := utils.Resolve("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	client := pbrc.NewRecordCollectionServiceClient(conn)
-	_, err = client.UpdateRecord(context.Background(), &pbrc.UpdateRecordRequest{Update: rec})
+	_, err = client.UpdateRecord(ctx, &pbrc.UpdateRecordRequest{Update: rec})
 	if err != nil {
 		return err
 	}
@@ -89,21 +118,11 @@ func (s *Server) update(rec *pbrc.Record) error {
 
 func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	host, port := s.GetIP("recordcollection")
-	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := pbrc.NewRecordCollectionServiceClient(conn)
 
-	//Only get clean records
-	s.LogMilestone("GetRecord", "PreGetRecords", t)
-	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Metadata: &pbrc.ReleaseMetadata{Dirty: false}, Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
+	r, err := s.rGetter.getRecords()
 	if err != nil {
 		return nil, err
 	}
-	s.LogMilestone("GetRecord", "PostGetRecords", t)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, nil
@@ -124,8 +143,20 @@ func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 		pDate := int64(0)
 		for _, rc := range r.GetRecords() {
 			if rc.GetMetadata().DateAdded > pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
-				pDate = rc.GetMetadata().DateAdded
-				newRec = rc
+				// Check on the data
+				dateFine := true
+				for _, score := range s.state.Scores {
+					if score.InstanceId == rc.GetRelease().InstanceId {
+						if t.AddDate(0, 0, -7).Unix() <= score.ScoreDate {
+							dateFine = false
+						}
+					}
+				}
+
+				if dateFine {
+					pDate = rc.GetMetadata().DateAdded
+					newRec = rc
+				}
 			}
 		}
 	}
@@ -307,6 +338,8 @@ func getCard(rel *pbd.Release) pbc.Card {
 //Init a record getter
 func Init() *Server {
 	s := &Server{GoServer: &goserver.GoServer{}, serving: true, delivering: true, state: &pbrg.State{}}
+	s.updater = &prodUpdater{}
+	s.rGetter = &prodGetter{}
 	s.Register = s
 	s.PrepServer()
 	return s
