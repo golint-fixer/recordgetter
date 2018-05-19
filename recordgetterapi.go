@@ -14,7 +14,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	t := time.Now()
 	if s.state.CurrentPick != nil {
 		if in.GetRefresh() {
-			rec, err := s.getRelease(ctx, s.state.CurrentPick.Release.InstanceId)
+			rec, err := s.rGetter.getRelease(ctx, s.state.CurrentPick.Release.InstanceId)
 			if err == nil && len(rec.GetRecords()) == 1 {
 				s.state.CurrentPick = rec.GetRecords()[0]
 			}
