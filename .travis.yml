@@ -8,6 +8,7 @@ branches:
     - master
 
 before_install:
+- ./look_for_logs.sh
 - go get github.com/axw/gocov/gocov
 - go get github.com/mattn/goveralls
 - go get github.com/golang/lint/golint
@@ -17,5 +18,4 @@ before_install:
   
 script:
 - fgt golint $(find . | grep .go$ | grep -v server.pb.go)
-- go test ./...
-#- $HOME/gopath/bin/goveralls -service=travis-ci -ignore=recordget.go github.com/brotherlogic/recordgetter
+- $HOME/gopath/bin/goveralls -service=travis-ci -ignore=recordget.go,recordgetterapi.go -package github.com/brotherlogic/recordgetter
