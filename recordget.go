@@ -41,6 +41,7 @@ const (
 
 type getter interface {
 	getRecords() (*pbrc.GetRecordsResponse, error)
+	getRelease(ctx context.Context, instanceID int32) (*pbrc.GetRecordsResponse, error)
 }
 
 type prodGetter struct{}
@@ -59,9 +60,9 @@ func (p *prodGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
 	return r, err
 }
 
-func (s *Server) getRelease(ctx context.Context, instance int32) (*pbrc.GetRecordsResponse, error) {
-	host, port := s.GetIP("recordcollection")
-	conn, err := grpc.Dial(host+":"+strconv.Itoa(port), grpc.WithInsecure())
+func (p *prodGetter) getRelease(ctx context.Context, instance int32) (*pbrc.GetRecordsResponse, error) {
+	host, port, _ := utils.Resolve("recordcollection")
+	conn, err := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}

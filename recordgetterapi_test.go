@@ -1,9 +1,11 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"testing"
 	"time"
+
+	"golang.org/x/net/context"
 
 	pbgd "github.com/brotherlogic/godiscogs"
 	pbrc "github.com/brotherlogic/recordcollection/proto"
@@ -12,9 +14,16 @@ import (
 
 type testGetter struct {
 	records []*pbrc.Record
+	fail    bool
 }
 
 func (tg *testGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
+	if tg.fail {
+		return nil, fmt.Errorf("Built to Fail")
+	}
+	return &pbrc.GetRecordsResponse{Records: tg.records}, nil
+}
+func (tg *testGetter) getRelease(ctx context.Context, instanceID int32) (*pbrc.GetRecordsResponse, error) {
 	return &pbrc.GetRecordsResponse{Records: tg.records}, nil
 }
 
@@ -73,5 +82,54 @@ func TestRecordGetNextDisk(t *testing.T) {
 
 	if resp.Disk != 2 {
 		t.Errorf("Wrong disk number returned %v", resp)
+	}
+}
+
+func TestForce(t *testing.T) {
+	s := InitTestServer()
+	s.state.CurrentPick = &pbrc.Record{Release: &pbgd.Release{InstanceId: 1234, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}}
+
+	_, err := s.Force(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		t.Errorf("Error forcing: %v", err)
+	}
+
+	if s.state.CurrentPick != nil {
+		t.Errorf("Pick has not been nil'd: %v", s.state.CurrentPick)
+	}
+}
+
+func TestRecordGetFailGet(t *testing.T) {
+	s := InitTestServer()
+	s.rGetter = &testGetter{
+		fail: true,
+		records: []*pbrc.Record{
+			&pbrc.Record{Release: &pbgd.Release{InstanceId: 12, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}},
+		},
+	}
+
+	resp, err := s.GetRecord(context.Background(), &pb.GetRecordRequest{})
+	if err == nil {
+		t.Fatalf("No error on get: %v", resp)
+	}
+}
+
+func TestRecordGetRefresh(t *testing.T) {
+	s := InitTestServer()
+	s.rGetter = &testGetter{
+		records: []*pbrc.Record{
+			&pbrc.Record{Release: &pbgd.Release{InstanceId: 12, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}},
+		},
+	}
+	s.state.CurrentPick = &pbrc.Record{Release: &pbgd.Release{InstanceId: 12}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}}
+
+	resp, err := s.GetRecord(context.Background(), &pb.GetRecordRequest{Refresh: true})
+	if err != nil {
+		t.Fatalf("Error on get: %v", err)
+	}
+
+	if resp.GetRecord().GetRelease().FormatQuantity != 2 {
+		t.Errorf("Record has not been refreshed: %v", resp)
 	}
 }
