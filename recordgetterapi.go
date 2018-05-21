@@ -21,7 +21,16 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 			s.LogMilestone("GetRecord", "Refresh", t)
 		}
 		s.LogFunction("GetRecord", t)
-		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick)}, nil
+		disk := int32(1)
+		for _, score := range s.state.Scores {
+			if score.InstanceId == s.state.CurrentPick.GetRelease().InstanceId {
+				if score.DiskNumber >= disk {
+					disk = score.DiskNumber + 1
+				}
+			}
+		}
+
+		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick), Disk: disk}, nil
 	}
 
 	rec, err := s.getReleaseFromPile(t)

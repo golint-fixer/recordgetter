@@ -85,6 +85,22 @@ func TestRecordGetNextDisk(t *testing.T) {
 	}
 }
 
+func TestGetDiskOnCurrent(t *testing.T) {
+	s := InitTestServer()
+	s.state.CurrentPick = &pbrc.Record{Release: &pbgd.Release{InstanceId: 1234, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}}
+	s.state.Scores = append(s.state.Scores, &pb.DiskScore{InstanceId: 1234, DiskNumber: 1, ScoreDate: time.Now().AddDate(0, -1, 0).Unix(), Score: 5})
+
+	resp, err := s.GetRecord(context.Background(), &pb.GetRecordRequest{})
+
+	if err != nil {
+		t.Errorf("Error forcing: %v", err)
+	}
+
+	if resp.Disk != 2 {
+		t.Errorf("No disk on current pick: %v", resp)
+	}
+}
+
 func TestForce(t *testing.T) {
 	s := InitTestServer()
 	s.state.CurrentPick = &pbrc.Record{Release: &pbgd.Release{InstanceId: 1234, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}}
