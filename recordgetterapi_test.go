@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -25,6 +26,37 @@ func (tg *testGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
 }
 func (tg *testGetter) getRelease(ctx context.Context, instanceID int32) (*pbrc.GetRecordsResponse, error) {
 	return &pbrc.GetRecordsResponse{Records: tg.records}, nil
+}
+
+func TestScoreRecordDiff(t *testing.T) {
+	s := InitTestServer()
+	s.rGetter = &testGetter{records: []*pbrc.Record{
+		&pbrc.Record{Release: &pbgd.Release{InstanceId: 12, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_FRESHMAN, DateAdded: 12}},
+		&pbrc.Record{Release: &pbgd.Release{InstanceId: 1234, FormatQuantity: 2}, Metadata: &pbrc.ReleaseMetadata{Category: pbrc.ReleaseMetadata_PRE_PROFESSOR, DateAdded: 1234}},
+	}}
+
+	resp, err := s.GetRecord(context.Background(), &pb.GetRecordRequest{})
+	if err != nil {
+		t.Fatalf("Error getting record: %v", err)
+	}
+
+	val := resp.GetRecord().GetRelease().InstanceId
+
+	resp.GetRecord().GetRelease().Rating = 4
+	_, err = s.Listened(context.Background(), resp.GetRecord())
+	if err != nil {
+		t.Fatalf("Error marking listened!: %v", err)
+	}
+
+	resp2, err := s.GetRecord(context.Background(), &pb.GetRecordRequest{})
+	if err != nil {
+		t.Fatalf("Error getting record: %v", err)
+	}
+
+	log.Printf("Returned: %v", resp2)
+	if resp2.GetRecord().GetRelease().InstanceId == val {
+		t.Errorf("Same record back %v vs %v", resp, resp2)
+	}
 }
 
 func TestRecordGetDiskReturn(t *testing.T) {
