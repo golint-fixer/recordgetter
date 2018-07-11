@@ -408,5 +408,8 @@ func main() {
 	server.RegisterServer("recordgetter", false)
 	//server.RegisterServingTask(server.GetRecords)
 	server.Log("Starting!")
-	server.Serve()
+	err := server.Serve()
+	if err != nil {
+		log.Fatalf("Error running getter: %v", err)
+	}
 }
