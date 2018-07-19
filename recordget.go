@@ -165,7 +165,33 @@ func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 		}
 	}
 
+	//Look for the oldest new rec
 	if newRec == nil {
+		pDate := int64(0)
+		for _, rc := range r.GetRecords() {
+			if rc.GetMetadata().GetCategory() == pbrc.ReleaseMetadata_PRE_FRESHMAN {
+				if (pDate == 0 || rc.GetMetadata().DateAdded < pDate) && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
+					// Check on the data
+					dateFine := true
+					for _, score := range s.state.Scores {
+						if score.InstanceId == rc.GetRelease().InstanceId {
+							if t.AddDate(0, 0, -7).Unix() <= score.ScoreDate {
+								dateFine = false
+							}
+						}
+					}
+
+					if dateFine {
+						pDate = rc.GetMetadata().DateAdded
+						newRec = rc
+					}
+				}
+			}
+		}
+	}
+
+	if newRec == nil {
+		//Get the youngest record in the to listen to
 		pDate := int64(0)
 		for _, rc := range r.GetRecords() {
 			if rc.GetMetadata().DateAdded > pDate && rc.GetRelease().Rating == 0 && !rc.GetMetadata().GetDirty() {
