@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -126,7 +127,7 @@ func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
 	}
 
 	if len(r.GetRecords()) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("No records found!")
 	}
 
 	var newRec *pbrc.Record
