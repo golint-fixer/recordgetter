@@ -44,6 +44,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	if s.state.Scores != nil {
 		for _, score := range s.state.Scores {
 			s.Log(fmt.Sprintf("%v and %v", score, rec))
+			time.Sleep(time.Second * 10)
 			if score.InstanceId == rec.GetRelease().InstanceId {
 				if score.DiskNumber >= disk {
 					disk = score.DiskNumber + 1
