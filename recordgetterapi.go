@@ -40,10 +40,12 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	}
 
 	disk := int32(1)
-	for _, score := range s.state.Scores {
-		if score.InstanceId == rec.GetRelease().InstanceId {
-			if score.DiskNumber >= disk {
-				disk = score.DiskNumber + 1
+	if s.state.Scores != nil {
+		for _, score := range s.state.Scores {
+			if score.InstanceId == rec.GetRelease().InstanceId {
+				if score.DiskNumber >= disk {
+					disk = score.DiskNumber + 1
+				}
 			}
 		}
 	}
