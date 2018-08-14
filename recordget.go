@@ -418,11 +418,11 @@ func (s Server) ReportHealth() bool {
 }
 
 // Mote promotes/demotes this server
-func (s *Server) Mote(master bool) error {
+func (s *Server) Mote(ctx context.Context, master bool) error {
 	s.delivering = master
 
 	if master {
-		return s.readState()
+		return s.readState(ctx)
 	}
 
 	return nil
@@ -434,9 +434,9 @@ func (s Server) GetState() []*pbg.State {
 }
 
 // This is the only method that interacts with disk
-func (s *Server) readState() error {
+func (s *Server) readState(ctx context.Context) error {
 	state := &pbrg.State{}
-	data, _, err := s.KSclient.Read(KEY, state)
+	data, _, err := s.KSclient.Read(ctx, KEY, state)
 
 	if err != nil {
 		return err
@@ -449,8 +449,8 @@ func (s *Server) readState() error {
 	return nil
 }
 
-func (s *Server) saveState() {
-	s.KSclient.Save(KEY, s.state)
+func (s *Server) saveState(ctx context.Context) {
+	s.KSclient.Save(ctx, KEY, s.state)
 }
 
 func main() {

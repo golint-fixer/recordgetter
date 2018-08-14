@@ -40,6 +40,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	}
 
 	disk := int32(1)
+	s.LogTrace(ctx, "Start Score Search", time.Now(), pbt.Milestone_MARKER)
 	if s.state.Scores != nil {
 		for _, score := range s.state.Scores {
 			s.Log(fmt.Sprintf("%v and %v", score, rec))
@@ -52,8 +53,10 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 		}
 	}
 
+	s.LogTrace(ctx, "End Score Search", time.Now(), pbt.Milestone_MARKER)
+
 	s.state.CurrentPick = rec
-	s.saveState()
+	s.saveState(ctx)
 
 	s.LogTrace(ctx, "GetRecord", time.Now(), pbt.Milestone_END_FUNCTION)
 	return &pb.GetRecordResponse{Record: rec, NumListens: getNumListens(rec), Disk: disk}, nil
@@ -68,7 +71,7 @@ func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pb.Empty, erro
 		s.updater.update(ctx, in)
 	}
 	s.state.CurrentPick = nil
-	s.saveState()
+	s.saveState(ctx)
 	s.LogTrace(ctx, "Listened", time.Now(), pbt.Milestone_END_FUNCTION)
 	return &pb.Empty{}, nil
 }
@@ -76,6 +79,6 @@ func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pb.Empty, erro
 //Force forces a repick
 func (s *Server) Force(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
 	s.state.CurrentPick = nil
-	s.saveState()
+	s.saveState(ctx)
 	return &pb.Empty{}, nil
 }
