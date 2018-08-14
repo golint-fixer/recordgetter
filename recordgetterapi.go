@@ -34,7 +34,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick), Disk: disk}, nil
 	}
 
-	rec, err := s.getReleaseFromPile(time.Now())
+	rec, err := s.getReleaseFromPile(ctx, time.Now())
 	if err != nil {
 		return nil, err
 	}

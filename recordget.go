@@ -41,13 +41,13 @@ const (
 )
 
 type getter interface {
-	getRecords() (*pbrc.GetRecordsResponse, error)
+	getRecords(ctx context.Context) (*pbrc.GetRecordsResponse, error)
 	getRelease(ctx context.Context, instanceID int32) (*pbrc.GetRecordsResponse, error)
 }
 
 type prodGetter struct{}
 
-func (p *prodGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
+func (p *prodGetter) getRecords(ctx context.Context) (*pbrc.GetRecordsResponse, error) {
 	host, port, _ := utils.Resolve("recordcollection")
 	conn, err := grpc.Dial(host+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
 	if err != nil {
@@ -57,7 +57,7 @@ func (p *prodGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
 	client := pbrc.NewRecordCollectionServiceClient(conn)
 
 	//Only get clean records
-	r, err := client.GetRecords(context.Background(), &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
+	r, err := client.GetRecords(ctx, &pbrc.GetRecordsRequest{Filter: &pbrc.Record{Release: &pbd.Release{FolderId: 812802}}}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 	return r, err
 }
 
@@ -118,10 +118,10 @@ func (p *prodUpdater) update(ctx context.Context, rec *pbrc.Record) error {
 	return nil
 }
 
-func (s *Server) getReleaseFromPile(t time.Time) (*pbrc.Record, error) {
+func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Record, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	r, err := s.rGetter.getRecords()
+	r, err := s.rGetter.getRecords(ctx)
 	if err != nil {
 		return nil, err
 	}

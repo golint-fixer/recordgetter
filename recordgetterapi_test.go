@@ -18,7 +18,7 @@ type testGetter struct {
 	fail    bool
 }
 
-func (tg *testGetter) getRecords() (*pbrc.GetRecordsResponse, error) {
+func (tg *testGetter) getRecords(ctx context.Context) (*pbrc.GetRecordsResponse, error) {
 	if tg.fail {
 		return nil, fmt.Errorf("Built to Fail")
 	}
