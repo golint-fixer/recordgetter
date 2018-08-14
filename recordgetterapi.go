@@ -40,7 +40,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	}
 
 	disk := int32(1)
-	s.LogTrace(ctx, fmt.Sptrintf("Start Score Search (%v)", len(s.state.Scores)), time.Now(), pbt.Milestone_MARKER)
+	s.LogTrace(ctx, fmt.Sprintf("Start Score Search (%v)", len(s.state.Scores)), time.Now(), pbt.Milestone_MARKER)
 	if s.state.Scores != nil {
 		for _, score := range s.state.Scores {
 			s.Log(fmt.Sprintf("%v and %v", score, rec))
