@@ -21,6 +21,7 @@ import (
 	"github.com/brotherlogic/goserver/utils"
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
+	pbt "github.com/brotherlogic/tracer/proto"
 )
 
 //Server main server type
@@ -125,6 +126,8 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = s.LogTrace(ctx, "getReleaseFromPile", time.Now(), pbt.Milestone_MARKER)
 
 	if len(r.GetRecords()) == 0 {
 		return nil, fmt.Errorf("No records found!")
