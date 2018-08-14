@@ -8,6 +8,7 @@ import (
 
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pb "github.com/brotherlogic/recordgetter/proto"
+	pbt "github.com/brotherlogic/tracer/proto"
 )
 
 //GetRecord gets a record
@@ -33,7 +34,7 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick), Disk: disk}, nil
 	}
 
-	rec, err := s.getReleaseFromPile(t)
+	rec, err := s.getReleaseFromPile(time.Now())
 	if err != nil {
 		return nil, err
 	}
