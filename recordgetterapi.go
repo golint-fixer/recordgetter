@@ -12,16 +12,14 @@ import (
 
 //GetRecord gets a record
 func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.GetRecordResponse, error) {
-	t := time.Now()
+	ctx = s.LogTrace(ctx, "GetRecord", time.Now(), pbt.Milestone_START_FUNCTION)
 	if s.state.CurrentPick != nil {
 		if in.GetRefresh() {
 			rec, err := s.rGetter.getRelease(ctx, s.state.CurrentPick.Release.InstanceId)
 			if err == nil && len(rec.GetRecords()) == 1 {
 				s.state.CurrentPick = rec.GetRecords()[0]
 			}
-			s.LogMilestone("GetRecord", "Refresh", t)
 		}
-		s.LogFunction("GetRecord", t)
 		disk := int32(1)
 		for _, score := range s.state.Scores {
 			if score.InstanceId == s.state.CurrentPick.GetRelease().InstanceId {
@@ -31,11 +29,11 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 			}
 		}
 
+		s.LogTrace(ctx, "GetRecord", time.Now(), pbt.Milestone_END_FUNCTION)
 		return &pb.GetRecordResponse{Record: s.state.CurrentPick, NumListens: getNumListens(s.state.CurrentPick), Disk: disk}, nil
 	}
 
 	rec, err := s.getReleaseFromPile(t)
-	s.LogMilestone("GetRecord", "GetRelease", t)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +54,13 @@ func (s *Server) GetRecord(ctx context.Context, in *pb.GetRecordRequest) (*pb.Ge
 	s.state.CurrentPick = rec
 	s.saveState()
 
-	s.LogFunction("GetRecord", t)
+	s.LogTrace(ctx, "GetRecord", time.Now(), pbt.Milestone_END_FUNCTION)
 	return &pb.GetRecordResponse{Record: rec, NumListens: getNumListens(rec), Disk: disk}, nil
 }
 
 //Listened marks a record as Listened
 func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pb.Empty, error) {
+	ctx = s.LogTrace(ctx, "Listened", time.Now(), pbt.Milestone_START_FUNCTION)
 	score := s.getScore(in)
 	if score >= 0 {
 		in.Release.Rating = score
@@ -69,6 +68,7 @@ func (s *Server) Listened(ctx context.Context, in *pbrc.Record) (*pb.Empty, erro
 	}
 	s.state.CurrentPick = nil
 	s.saveState()
+	s.LogTrace(ctx, "Listened", time.Now(), pbt.Milestone_END_FUNCTION)
 	return &pb.Empty{}, nil
 }
 
