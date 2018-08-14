@@ -144,6 +144,8 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 		}
 	}
 
+	ctx = s.LogTrace(ctx, "PostStage", time.Now(), pbt.Milestone_MARKER)
+
 	//Look for the oldest new rec
 	if newRec == nil {
 		pDate := int64(0)
@@ -168,6 +170,8 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 			}
 		}
 	}
+
+	ctx = s.LogTrace(ctx, "PostOldestNew", time.Now(), pbt.Milestone_MARKER)
 
 	//Look for the oldest new rec
 	if newRec == nil {
@@ -194,6 +198,8 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 		}
 	}
 
+	ctx = s.LogTrace(ctx, "PostOldestNew2", time.Now(), pbt.Milestone_MARKER)
+
 	if newRec == nil {
 		//Get the youngest record in the to listen to
 		pDate := int64(0)
@@ -216,7 +222,7 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 			}
 		}
 	}
-	s.LogMilestone("GetRecord", "RecordSelected", t)
+	ctx = s.LogTrace(ctx, "Youngest", time.Now(), pbt.Milestone_MARKER)
 
 	return newRec, nil
 }
