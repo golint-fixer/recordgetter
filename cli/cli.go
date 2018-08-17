@@ -92,12 +92,10 @@ func run() (int, error) {
 func main() {
 	ctx, cancel := utils.BuildContext("RecordGet-Score", "recordgetter-cli", pbgs.ContextType_MEDIUM)
 	defer cancel()
-	get(ctx)
 	val, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		log.Fatalf("Error parsing num: %v", err)
 	}
 	score(ctx, int32(val))
-	get(ctx)
 	utils.SendTrace(ctx, "recordgetter-cli", time.Now(), pbt.Milestone_END, "recordgetter-cli")
 }
