@@ -7,6 +7,18 @@ import (
 	pb "github.com/brotherlogic/recordgetter/proto"
 )
 
+func (s *Server) needsRip(r *pbrc.Record) bool {
+	for _, f := range r.GetRelease().Formats {
+		if f.Name == "CD" {
+			if !s.cdproc.isRipped(r.GetRelease().Id) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func (s *Server) clearScores(instanceID int32) {
 	i := 0
 	for i < len(s.state.Scores) {

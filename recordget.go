@@ -24,6 +24,10 @@ import (
 	pbt "github.com/brotherlogic/tracer/proto"
 )
 
+type cdproc interface {
+	isRipped(ID int32) bool
+}
+
 //Server main server type
 type Server struct {
 	*goserver.GoServer
@@ -32,6 +36,7 @@ type Server struct {
 	state      *pbrg.State
 	updater    updater
 	rGetter    getter
+	cdproc     cdproc
 }
 
 const (
@@ -130,7 +135,7 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 	ctx = s.LogTrace(ctx, "getReleaseFromPile", time.Now(), pbt.Milestone_MARKER)
 
 	if len(r.GetRecords()) == 0 {
-		return nil, fmt.Errorf("No records found!")
+		return nil, fmt.Errorf("No records found")
 	}
 
 	var newRec *pbrc.Record
@@ -139,8 +144,10 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 	//Look for a record staged to sell
 	for _, rc := range r.GetRecords() {
 		if rc.GetMetadata().GetCategory() == pbrc.ReleaseMetadata_STAGED_TO_SELL && rc.GetMetadata().SetRating == 0 && rc.GetRelease().Rating == 0 {
-			newRec = rc
-			break
+			if !s.needsRip(rc) {
+				newRec = rc
+				break
+			}
 		}
 	}
 
@@ -162,7 +169,7 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 						}
 					}
 
-					if dateFine {
+					if dateFine && !s.needsRip(rc) {
 						pDate = rc.GetMetadata().DateAdded
 						newRec = rc
 					}
@@ -215,7 +222,7 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 					}
 				}
 
-				if dateFine {
+				if dateFine && !s.needsRip(rc) {
 					pDate = rc.GetMetadata().DateAdded
 					newRec = rc
 				}
