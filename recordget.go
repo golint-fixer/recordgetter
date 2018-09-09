@@ -22,11 +22,44 @@ import (
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 	pbt "github.com/brotherlogic/tracer/proto"
+	pbcdp "github.com/brotherlogic/cdprocessor/proto"
 )
 
 type cdproc interface {
 	isRipped(ID int32) bool
 }
+type cdprocProd struct{}
+
+func (p *cdprocProd) isRipped(ID int32) bool {
+	ip, port, err := utils.Resolve("cdprocessor")
+	if err != nil {
+		return false
+	}
+
+	conn, err := grpc.Dial(ip+":"+strconv.Itoa(int(port)), grpc.WithInsecure())
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	client := pbcdp.NewCDProcessorClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	res, err := client.GetRipped(ctx, &pbcdp.GetRippedRequest{})
+	if err != nil {
+		return false
+	}
+
+	for _, r := range res.GetRipped() {
+		if r.Id == ID {
+			return true
+		}
+	}
+
+	return false
+}
+
 
 //Server main server type
 type Server struct {
@@ -409,6 +442,7 @@ func Init() *Server {
 	s := &Server{GoServer: &goserver.GoServer{}, serving: true, delivering: true, state: &pbrg.State{}}
 	s.updater = &prodUpdater{}
 	s.rGetter = &prodGetter{}
+	s.cdproc = &cdprocProd{}
 	s.Register = s
 	s.PrepServer()
 	return s
