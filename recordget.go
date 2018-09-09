@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 
 	pbc "github.com/brotherlogic/cardserver/card"
+	pbcdp "github.com/brotherlogic/cdprocessor/proto"
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
 	pbg "github.com/brotherlogic/goserver/proto"
@@ -22,7 +23,6 @@ import (
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 	pbt "github.com/brotherlogic/tracer/proto"
-	pbcdp "github.com/brotherlogic/cdprocessor/proto"
 )
 
 type cdproc interface {
@@ -59,7 +59,6 @@ func (p *cdprocProd) isRipped(ID int32) bool {
 
 	return false
 }
-
 
 //Server main server type
 type Server struct {
@@ -229,7 +228,7 @@ func (s *Server) getReleaseFromPile(ctx context.Context, t time.Time) (*pbrc.Rec
 						}
 					}
 
-					if dateFine {
+					if dateFine && !s.needsRip(rc) {
 						pDate = rc.GetMetadata().DateAdded
 						newRec = rc
 					}
