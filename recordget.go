@@ -9,20 +9,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/brotherlogic/goserver"
-	"github.com/brotherlogic/keystore/client"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-
 	pbc "github.com/brotherlogic/cardserver/card"
 	pbcdp "github.com/brotherlogic/cdprocessor/proto"
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbd "github.com/brotherlogic/godiscogs"
+	"github.com/brotherlogic/goserver"
 	pbg "github.com/brotherlogic/goserver/proto"
 	"github.com/brotherlogic/goserver/utils"
+	"github.com/brotherlogic/keystore/client"
 	pbrc "github.com/brotherlogic/recordcollection/proto"
 	pbrg "github.com/brotherlogic/recordgetter/proto"
 	pbt "github.com/brotherlogic/tracer/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type cdproc interface {
@@ -470,7 +469,13 @@ func (s *Server) Mote(ctx context.Context, master bool) error {
 
 // GetState gets the state of the server
 func (s Server) GetState() []*pbg.State {
-	return []*pbg.State{}
+	text := "No record chosen"
+	if s.state.CurrentPick != nil {
+		text = s.state.CurrentPick.GetRelease().Title
+	}
+	return []*pbg.State{
+		&pbg.State{Key: "Current", Text: text},
+	}
 }
 
 // This is the only method that interacts with disk
